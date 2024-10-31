@@ -22,7 +22,12 @@ func diceGameHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error upgrading connection: %v", err)
 		return
 	}
-	defer ws.Close()
+	defer func() {
+		if err := ws.Close(); err != nil {
+			log.Printf("Error closing connection: %v", err)
+		}
+	}()
+
 	for {
 		var message WsMessage
 		err := ws.ReadJSON(&message)
@@ -31,55 +36,67 @@ func diceGameHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		messageType := message.Type
-		switch messageType {
-		case "wallet":
-			var walletPayload WalletPayload
-			if err := json.Unmarshal(message.Payload, &walletPayload); err != nil {
-				log.Printf("Error parsing wallet payload: %v", err)
-				continue
-			}
-			balance, err := getBalance(walletPayload.ClientID)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			ws.WriteJSON(balance)
-		case "play":
-			var playPayload PlayPayload
-			if err := json.Unmarshal(message.Payload, &playPayload); err != nil {
-				log.Printf("Error parsing play payload: %v", err)
-				continue
-			}
-			playRes, err := processPlay(playPayload)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			ws.WriteJSON(playRes)
-		case "endplay":
-			var endPlayPayload EndPlayPayload
-			if err := json.Unmarshal(message.Payload, &endPlayPayload); err != nil {
-				log.Printf("Error parsing end play payload: %v", err)
-				continue
-			}
-			// Finalize the play
-			err = endPlay(endPlayPayload.ClientID)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			// Respond with the endplay result
-			response := map[string]interface{}{
-				"type":    "endplay",
-				"success": true,
-			}
-			ws.WriteJSON(response)
-		default:
-			log.Printf("Unknown message type: %s", message.Type)
-
+		if err = handleMessages(ws, message); err != nil {
+			log.Printf("Error handling message type '%s': %v", message.Type, err)
 		}
-	}
 
+	}
+}
+
+func handleMessages(ws *websocket.Conn, message WsMessage) error {
+	switch message.Type {
+	case "wallet":
+		return handleWalletMessage(ws, message)
+	case "play":
+		return handlePlayMessage(ws, message)
+	case "endplay":
+		return handleEndPlayMessage(ws, message)
+	default:
+		log.Printf("Unknown message type: %s", message.Type)
+		return nil
+	}
+}
+
+func handleWalletMessage(ws *websocket.Conn, msg WsMessage) error {
+	var walletPayload WalletPayload
+	if err := json.Unmarshal(msg.Payload, &walletPayload); err != nil {
+		return err
+	}
+	log.Printf("Handling Wallet Message for User of Id -> %d", walletPayload.ClientID)
+	balance, err := getBalance(walletPayload.ClientID)
+	if err != nil {
+		return err
+	}
+	ws.WriteJSON(balance)
+	return nil
+}
+
+func handlePlayMessage(ws *websocket.Conn, msg WsMessage) error {
+	var playPayload PlayPayload
+	if err := json.Unmarshal(msg.Payload, &playPayload); err != nil {
+		return err
+	}
+	log.Printf("Handling Play Message for User of Id -> %d", playPayload.ClientID)
+	playRes, err := processPlay(playPayload)
+	if err != nil {
+		return err
+	}
+	ws.WriteJSON(playRes)
+	return nil
+}
+func handleEndPlayMessage(ws *websocket.Conn, msg WsMessage) error {
+	var endPlayPayload EndPlayPayload
+	if err := json.Unmarshal(msg.Payload, &endPlayPayload); err != nil {
+		return err
+	}
+	log.Printf("Handling End Play Message for User of Id -> %d", endPlayPayload.ClientID)
+	if err := endPlay(endPlayPayload.ClientID); err != nil {
+		return err
+	}
+	response := map[string]interface{}{
+		"type":    "endplay",
+		"success": true,
+	}
+	ws.WriteJSON(response)
+	return nil
 }
