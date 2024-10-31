@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -27,7 +29,6 @@ func diceGameHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error closing connection: %v", err)
 		}
 	}()
-
 	for {
 		var message WsMessage
 		err := ws.ReadJSON(&message)
@@ -35,15 +36,22 @@ func diceGameHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error reading message: %v", err)
 			break
 		}
-
-		if err = handleMessages(ws, message); err != nil {
+		if err = handleMessageType(ws, message); err != nil {
 			log.Printf("Error handling message type '%s': %v", message.Type, err)
+			var gameErr *GameError
+			if !errors.As(err, &gameErr) {
+				gameErr = NewInternalError(err.Error())
+			}
+			if err := ws.WriteJSON(gameErr); err != nil {
+				log.Printf("Error sending error response: %v", err)
+				return
+			}
 		}
 
 	}
 }
 
-func handleMessages(ws *websocket.Conn, message WsMessage) error {
+func handleMessageType(ws *websocket.Conn, message WsMessage) error {
 	switch message.Type {
 	case "wallet":
 		return handleWalletMessage(ws, message)
@@ -52,8 +60,7 @@ func handleMessages(ws *websocket.Conn, message WsMessage) error {
 	case "endplay":
 		return handleEndPlayMessage(ws, message)
 	default:
-		log.Printf("Unknown message type: %s", message.Type)
-		return nil
+		return NewInvalidInputError(fmt.Sprintf("Unknown message type: %s", message.Type))
 	}
 }
 
