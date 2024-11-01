@@ -19,7 +19,7 @@ type BetType string
 
 func (m MessageType) IsValid() bool {
 	switch m {
-	case MessageTypeWallet, MessageTypePlay, MessageTypeEndPlay:
+	case MessageTypeWallet, MessageTypePlay, MessageTypeEndPlay, MessageTypeError:
 		return true
 	default:
 		return false
@@ -35,6 +35,7 @@ func (m BetType) IsValid() bool {
 }
 
 const (
+	MessageTypeError   MessageType = "error"
 	MessageTypeWallet  MessageType = "wallet"
 	MessageTypePlay    MessageType = "play"
 	MessageTypeEndPlay MessageType = "endplay"

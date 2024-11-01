@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -71,19 +70,12 @@ func (s *WebSocketServer) handleConnection(ws *websocket.Conn) {
 
 		if err = s.handleMessage(ws, message); err != nil {
 			log.Printf("Error handling message type '%s': %v", message.Type, err)
-
-			var gameErr *appErrors.GameError
-			if !errors.As(err, &gameErr) {
-				gameErr = appErrors.NewInternalError(err.Error())
-			}
-
-			if err := ws.WriteJSON(gameErr); err != nil {
-				log.Printf("Error sending error response: %v", err)
-				return
-			}
+			s.sendResponse(ws, domain.MessageTypeError, err)
 		}
+
 	}
 }
+
 func (s *WebSocketServer) handleMessage(ws *websocket.Conn, msg domain.WsMessage) error {
 	switch msg.Type {
 	case domain.MessageTypeWallet:
