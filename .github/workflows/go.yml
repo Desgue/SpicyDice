@@ -27,7 +27,7 @@ jobs:
       run: go mod tidy
       
     - name: Build
-      run: go build -v ./...
+      run: go build -v -o spicy_dice ./cmd/main.go  # Build from cmd/main.go
 
     - name: Test With Go
       run: go test -json > TestResults-${{ matrix.go-version }}.json
