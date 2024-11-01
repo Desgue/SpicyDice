@@ -91,7 +91,7 @@ func handleWalletMessage(ws *websocket.Conn, msg WsMessage) error {
 	if err != nil {
 		return err
 	}
-	ws.WriteJSON(WsMessage{Type: "wallet", Payload: payload})
+	ws.WriteJSON(WsMessage{Type: Wallet, Payload: payload})
 	return nil
 }
 
@@ -109,7 +109,7 @@ func handlePlayMessage(ws *websocket.Conn, msg WsMessage) error {
 	if err != nil {
 		return err
 	}
-	ws.WriteJSON(WsMessage{Type: "play", Payload: payload})
+	ws.WriteJSON(WsMessage{Type: Play, Payload: payload})
 	return nil
 }
 func handleEndPlayMessage(ws *websocket.Conn, msg WsMessage) error {
@@ -126,6 +126,6 @@ func handleEndPlayMessage(ws *websocket.Conn, msg WsMessage) error {
 	if err != nil {
 		return err
 	}
-	ws.WriteJSON(WsMessage{Type: "endplay", Payload: payload})
+	ws.WriteJSON(WsMessage{Type: EndPlay, Payload: payload})
 	return nil
 }

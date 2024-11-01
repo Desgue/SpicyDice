@@ -2,8 +2,19 @@ package main
 
 import "encoding/json"
 
+type MessageType string
+type BetType string
+
+const (
+	Wallet  MessageType = "wallet"
+	Play    MessageType = "play"
+	EndPlay MessageType = "endplay"
+	Even    BetType     = "even"
+	Odd     BetType     = "odd"
+)
+
 type WsMessage struct {
-	Type    string          `json:"type"` // wallet | play | endplay
+	Type    MessageType     `json:"type"`
 	Payload json.RawMessage `json:"payload"`
 }
 
@@ -19,7 +30,7 @@ type WalletResponse struct {
 type PlayPayload struct {
 	ClientID  int     `json:"client_id"`
 	BetAmount float64 `json:"bet_amount"`
-	BetType   string  `json:"bet_type"` // "even" or "odd"
+	BetType   BetType `json:"bet_type"`
 }
 
 type PlayResponse struct {
