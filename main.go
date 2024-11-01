@@ -2,19 +2,28 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	_ "github.com/lib/pq"
 )
 
 const (
 	PORT string = ":8080"
-	CONN string = "postgres://postgres:p4ssw0rd@localhost:5432/postgres?sslmode=disable"
 )
 
 func main() {
-	db, err := sql.Open("postgres", CONN)
+	connStr := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+		os.Getenv("DB_PORT"),
+	)
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalf("error open database: %s", err.Error())
 	}
