@@ -11,9 +11,12 @@ CREATE TABLE IF NOT EXISTS  game_session (
   won boolean,
   active boolean,
   session_start timestamptz,
-  session_end timestamptz,
+  session_end timestamptz DEFAULT NULL,
   FOREIGN KEY (player_id) REFERENCES player (id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX unique_active_player_session ON game_session (player_id)
+WHERE active = true;
 
 CREATE OR REPLACE FUNCTION random_decimal(min_val decimal, max_val decimal) 
 RETURNS decimal AS $$

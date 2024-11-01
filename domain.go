@@ -1,11 +1,14 @@
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Repository interface {
 	GetBalance(userId int) (float64, error)
 	DeductBalance(userId int, amount float64) (float64, error)
-	ProcessPlay()
+	CreateGameSession(sess GameSessionRequest) (GameSession, error)
 	EndPlay()
 }
 
@@ -65,4 +68,24 @@ type PlayResponse struct {
 
 type EndPlayPayload struct {
 	ClientID int `json:"client_id"`
+}
+
+type GameSession struct {
+	SessionID    int        `json:"session_id"`
+	PlayerID     int        `json:"player_id"`
+	BetAmount    float64    `json:"bet_amount"`
+	DiceResult   int        `json:"dice_result"`
+	Won          bool       `json:"won"`
+	Active       bool       `json:"active"`
+	SessionStart time.Time  `json:"session_start"`
+	SessionEnd   *time.Time `json:"session_end,omitempty"` // Nullable
+}
+
+type GameSessionRequest struct {
+	PlayerID     int       `json:"player_id"`
+	BetAmount    float64   `json:"bet_amount"`
+	DiceResult   int       `json:"dice_result"`
+	Won          bool      `json:"won"`
+	Active       bool      `json:"active"`
+	SessionStart time.Time `json:"session_start"`
 }

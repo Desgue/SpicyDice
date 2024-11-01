@@ -43,5 +43,66 @@ func (gr *GameRepository) DeductBalance(userId int, amount float64) (float64, er
 	return newBalance, nil
 
 }
-func (gr *GameRepository) ProcessPlay() {}
-func (gr *GameRepository) EndPlay()     {}
+
+func (gr *GameRepository) CreateGameSession(sess GameSessionRequest) (GameSession, error) {
+	var session GameSession
+	query := `
+		INSERT INTO game_session (player_id, bet_amount, dice_result, won, active, session_start)
+		VALUES
+		($1, $2, $3, $4, $5, $6)
+		RETURNING (session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end)
+	;`
+
+	err := gr.db.QueryRow(
+		query,
+		sess.PlayerID,
+		sess.BetAmount,
+		sess.DiceResult,
+		sess.Won,
+		sess.Active,
+		sess.SessionStart,
+	).
+		Scan(
+			&session.SessionID,
+			&session.PlayerID,
+			&session.BetAmount,
+			&session.DiceResult,
+			&session.Won,
+			&session.Active,
+			&session.SessionStart,
+			&session.SessionEnd,
+		)
+	if err != nil {
+		return GameSession{}, err
+	}
+
+	return session, nil
+
+}
+func (gr *GameRepository) GetGameSession(playerID int) (GameSession, error) {
+	var session GameSession
+	query := `
+		SELECT session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end FROM game_session 
+		WHERE session_id = $1
+	;`
+
+	err := gr.db.QueryRow(
+		query,
+		playerID).
+		Scan(
+			&session.SessionID,
+			&session.PlayerID,
+			&session.BetAmount,
+			&session.DiceResult,
+			&session.Won,
+			&session.Active,
+			&session.SessionStart,
+			&session.SessionEnd,
+		)
+	if err != nil {
+		return GameSession{}, err
+	}
+
+	return session, nil
+}
+func (gr *GameRepository) EndPlay() {}

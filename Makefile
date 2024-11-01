@@ -69,7 +69,7 @@ down-v:
 restart: down up
 
 .PHONY: restart-v
-restart: down-v up
+restart-v: down-v up
 
 .PHONY: clean
 clean: down

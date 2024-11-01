@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"time"
 )
 
 const (
@@ -47,6 +48,17 @@ func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 	diceSides := 6 // TODO: Implement more than 6 sided dice?
 	diceResult := gs.rollDice(diceSides)
 	haveWon := gs.calculateOutcome(msg.BetType, diceResult)
+
+	if _, err = gs.repo.CreateGameSession(GameSessionRequest{
+		PlayerID:     msg.ClientID,
+		BetAmount:    msg.BetAmount,
+		DiceResult:   diceResult,
+		Won:          haveWon,
+		Active:       true,
+		SessionStart: time.Now(),
+	}); err != nil {
+		return PlayResponse{}, NewInternalError(err.Error())
+	}
 
 	return PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance}, nil
 }
