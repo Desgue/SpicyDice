@@ -130,7 +130,7 @@ function initializeGame() {
         // Reset and start spinning animation
         diceContainer.textContent = '🎲';
         diceContainer.classList.add('dice-spin');
-        resultDisplay.classList.add('text-transparent');
+        resultDisplay.textContent = '';
         playButton.disabled = true;
         betEvenBtn.disabled = true
         betOddBtn.disabled = true
