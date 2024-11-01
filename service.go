@@ -24,7 +24,7 @@ func NewGameService(repo Repository) *GameService {
 func (gs *GameService) GetBalance(userID int) (WalletResponse, error) {
 	balance, err := gs.repo.GetBalance(userID)
 	if err != nil {
-		return WalletResponse{}, err
+		return WalletResponse{}, NewInternalError(err.Error())
 	}
 	return WalletResponse{ClientID: userID, Balance: balance}, nil
 }
@@ -33,7 +33,7 @@ func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
 	balance, err := gs.repo.GetBalance(msg.ClientID)
 	if err != nil {
-		return PlayResponse{}, err
+		return PlayResponse{}, NewInternalError(err.Error())
 	}
 
 	if err := gs.validateBetAmount(msg.BetAmount, balance); err != nil {
@@ -46,9 +46,9 @@ func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 	}
 	diceSides := 6 // TODO: Implement more than 6 sided dice?
 	diceResult := gs.rollDice(diceSides)
-	won := gs.calculateOutcome(msg.BetType, diceResult)
+	haveWon := gs.calculateOutcome(msg.BetType, diceResult)
 
-	return PlayResponse{DiceResult: diceResult, Won: won, Balance: newBalance}, nil
+	return PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance}, nil
 }
 
 func (gs *GameService) EndPlay(clientID int) error {
