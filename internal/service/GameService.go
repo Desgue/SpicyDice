@@ -56,14 +56,11 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse,
 	}
 
 	// GAME LOGIC
-	newBalance, err := gs.repo.DeductBalance(msg.ClientID, msg.BetAmount)
-	if err != nil {
-		return domain.PlayResponse{}, appErrors.NewInternalError(err.Error())
-	}
 	diceSides := 6 // TODO: Implement more than 6 sided dice?
 	diceResult := gs.rollDice(diceSides)
 	haveWon := gs.calculateOutcome(msg.BetType, diceResult)
 
+	// TODO: Implement Transaction To make sure session creation and balance change are sync?
 	if _, err = gs.repo.CreateGameSession(domain.GameSessionRequest{
 		PlayerID:     msg.ClientID,
 		BetAmount:    msg.BetAmount,
@@ -75,6 +72,12 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse,
 		return domain.PlayResponse{}, appErrors.NewInternalError(err.Error())
 	}
 
+	// TODO: Add multiplier options ?
+	multiplier := 2.0
+	newBalance, err := gs.handleBalanceChange(msg.BetAmount, multiplier, msg.ClientID, haveWon)
+	if err != nil {
+		return domain.PlayResponse{}, err
+	}
 	return domain.PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance}, nil
 }
 
@@ -90,26 +93,11 @@ func (gs *GameService) EndPlay(clientID int) (domain.EndPlayResponse, error) {
 		return domain.EndPlayResponse{}, appErrors.NewActiveSessionError(fmt.Sprintf("Client ID %d does not have an active session.", clientID))
 	}
 
-	var balance float64
-	if activeSession.Won {
-		// TODO: Add multiplier options ?
-		multiplier := 2.0
-		balance, err = gs.repo.IncreaseBalance(clientID, activeSession.BetAmount*multiplier)
-		if err != nil {
-			return domain.EndPlayResponse{}, appErrors.NewInternalError(err.Error())
-		}
-	} else {
-		balance, err = gs.repo.GetBalance(clientID)
-		if err != nil {
-			return domain.EndPlayResponse{}, err
-		}
-	}
-
 	if err := gs.repo.CloseCurrentGameSession(clientID); err != nil {
 		return domain.EndPlayResponse{}, appErrors.NewInternalError(err.Error())
 	}
 
-	return domain.EndPlayResponse{ClientID: clientID, Balance: balance}, nil
+	return domain.EndPlayResponse{ClientID: clientID}, nil
 }
 
 // PRIVATE METHODS
@@ -142,6 +130,23 @@ func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	}
 
 	return nil
+}
+
+func (gs *GameService) handleBalanceChange(bet, multiplier float64, clientID int, won bool) (float64, error) {
+	var newBalance float64
+	var err error
+	if won {
+		newBalance, err = gs.repo.IncreaseBalance(clientID, bet*multiplier-bet)
+		if err != nil {
+			return 0, appErrors.NewInternalError(err.Error())
+		}
+	} else {
+		newBalance, err = gs.repo.DeductBalance(clientID, bet)
+		if err != nil {
+			return 0, appErrors.NewInternalError(err.Error())
+		}
+	}
+	return newBalance, nil
 }
 
 func (gs *GameService) rollDice(sides int) int {

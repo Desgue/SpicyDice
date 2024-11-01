@@ -69,9 +69,10 @@ type PlayResponse struct {
 	Balance    float64 `json:"balance"`
 }
 type EndPlayResponse struct {
-	ClientID int     `json:"client_id"`
-	Balance  float64 `json:"balance"`
+	ClientID int `json:"client_id"`
 }
+
+// The payload from the frontend
 type EndPlayPayload struct {
 	ClientID int `json:"client_id"`
 }
