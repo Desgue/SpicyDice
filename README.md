@@ -1,4 +1,12 @@
-# Deployment Guide
+# SpicyDice Documentation Index
+
+## 📖 Overview
+SpicyDice is a high-performance betting game server that enables real-time dice gambling through WebSocket connections. Built with Go, it features:
+
+- Real-time Gameplay: Instant bet placement and results via WebSocket
+- Session Management: Secure single-session system per player
+- Persistent Storage: PostgreSQL-backed transaction history
+- Clean Architecture: Maintainable and testable codebase
 
 ## Prerequisites
 - Docker
@@ -81,3 +89,94 @@ make clean
 ```
 
 **Note**: Credentials are for development. Modify for production use.
+
+## WebSocket API
+
+### Connection
+```
+ws://localhost:8080/ws
+```
+
+### Message Structure
+```json
+{
+  "type": "string",
+  "payload": {}
+}
+```
+
+### Endpoints
+
+#### 1. Get Wallet Balance
+```json
+{
+  "type": "wallet",
+  "payload": {
+    "client_id": 1
+  }
+}
+```
+Response:
+```json
+{
+  "client_id": 1,
+  "balance": 100.00
+}
+```
+
+#### 2. Place Bet
+```json
+{
+  "type": "play",
+  "payload": {
+    "client_id": 1,
+    "bet_amount": 10.00,
+    "bet_type": "even"  // "even" or "odd"
+  }
+}
+```
+Response:
+```json
+{
+  "dice_result": 4,
+  "won": true,
+  "balance": 90.00
+}
+```
+
+#### 3. End Play Session
+```json
+{
+  "type": "endplay",
+  "payload": {
+    "client_id": 1
+  }
+}
+```
+Response:
+```json
+{
+  "client_id": 1,
+  "balance": 110.00  // Updated balance after win/loss
+}
+```
+
+## Game Rules
+- Bet amounts: Min $1.00, Max $1,000.00
+- Win multiplier: 2x
+- Single active session per player
+- 6-sided dice
+- Even/Odd betting only
+
+## Error Handling
+- Insufficient funds
+- Invalid bet amount
+- Active session conflicts
+- User not found
+- Invalid message types
+
+## Architecture
+- Clean Architecture pattern
+- Services layer for game logic
+- Repository layer for data persistence
+- PostgreSQL for data storage
