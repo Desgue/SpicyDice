@@ -9,7 +9,7 @@ func getBalance(userID int) (WalletResponse, error) {
 
 // Placeholder function to process the play
 func processPlay(msg PlayPayload) (PlayResponse, error) {
-	log.Printf("Processing play for user id -> %d\nBet Amount -> %g\n Bet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
+	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
 	return PlayResponse{DiceResult: 1, Won: true}, nil
 }
 

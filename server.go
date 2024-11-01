@@ -18,6 +18,19 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func serveHome(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.URL)
+	if r.URL.Path != "/" {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	http.ServeFile(w, r, "./frontend/index.html")
+}
+
 func diceGameHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -74,7 +87,11 @@ func handleWalletMessage(ws *websocket.Conn, msg WsMessage) error {
 	if err != nil {
 		return err
 	}
-	ws.WriteJSON(balance)
+	payload, err := json.Marshal(balance)
+	if err != nil {
+		return err
+	}
+	ws.WriteJSON(WsMessage{Type: "wallet", Payload: payload})
 	return nil
 }
 
@@ -88,7 +105,11 @@ func handlePlayMessage(ws *websocket.Conn, msg WsMessage) error {
 	if err != nil {
 		return err
 	}
-	ws.WriteJSON(playRes)
+	payload, err := json.Marshal(playRes)
+	if err != nil {
+		return err
+	}
+	ws.WriteJSON(WsMessage{Type: "play", Payload: payload})
 	return nil
 }
 func handleEndPlayMessage(ws *websocket.Conn, msg WsMessage) error {
@@ -100,10 +121,11 @@ func handleEndPlayMessage(ws *websocket.Conn, msg WsMessage) error {
 	if err := endPlay(endPlayPayload.ClientID); err != nil {
 		return err
 	}
-	response := map[string]interface{}{
-		"type":    "endplay",
-		"success": true,
+
+	payload, err := json.Marshal(true)
+	if err != nil {
+		return err
 	}
-	ws.WriteJSON(response)
+	ws.WriteJSON(WsMessage{Type: "endplay", Payload: payload})
 	return nil
 }

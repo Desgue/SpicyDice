@@ -10,6 +10,9 @@ const (
 )
 
 func main() {
+	http.HandleFunc("/", serveHome)
+	fs := http.FileServer(http.Dir("./frontend"))
+	http.Handle("/frontend/", http.StripPrefix("/frontend/", fs))
 	http.HandleFunc("/ws/spicy-dice", diceGameHandler)
 
 	log.Printf("Starting WebSocket server on %s", PORT)
