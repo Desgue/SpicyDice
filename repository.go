@@ -43,6 +43,21 @@ func (gr *GameRepository) DeductBalance(playerID int, amount float64) (float64, 
 	return newBalance, nil
 
 }
+func (gr *GameRepository) IncreaseBalance(playerID int, amount float64) (float64, error) {
+	var newBalance float64
+	query := `
+		UPDATE player
+		SET balance = balance + $1
+		WHERE id = $2 
+		RETURNING balance
+		;`
+	if err := gr.db.QueryRow(query, amount, playerID).Scan(&newBalance); err != nil {
+		return 0, fmt.Errorf("error increasing balance for player id %d", playerID)
+	}
+
+	return newBalance, nil
+
+}
 
 func (gr *GameRepository) CreateGameSession(sess GameSessionRequest) (GameSession, error) {
 	var session GameSession

@@ -75,23 +75,38 @@ func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 	return PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance}, nil
 }
 
-func (gs *GameService) EndPlay(clientID int) error {
+func (gs *GameService) EndPlay(clientID int) (EndPlayResponse, error) {
 	log.Printf("\nFinishing play session for client id -> %d", clientID)
 
 	// VALIDATE USER HAS AN ACTIVE SESSION BEFORE ENDING THE PLAY SESSION
 	activeSession, err := gs.repo.GetActiveSession(clientID)
 	if err != nil {
-		return NewInternalError(err.Error())
+		return EndPlayResponse{}, NewInternalError(err.Error())
 	}
 	if activeSession == nil {
-		return NewActiveSessionError(fmt.Sprintf("Client ID %d does not have an active session.", clientID))
+		return EndPlayResponse{}, NewActiveSessionError(fmt.Sprintf("Client ID %d does not have an active session.", clientID))
+	}
+
+	var balance float64
+	if activeSession.Won {
+		// TODO: Add multiplier options ?
+		multiplier := 2.0
+		balance, err = gs.repo.IncreaseBalance(clientID, activeSession.BetAmount*multiplier)
+		if err != nil {
+			return EndPlayResponse{}, NewInternalError(err.Error())
+		}
+	} else {
+		balance, err = gs.repo.GetBalance(clientID)
+		if err != nil {
+			return EndPlayResponse{}, err
+		}
 	}
 
 	if err := gs.repo.CloseCurrentGameSession(clientID); err != nil {
-		return NewInternalError(err.Error())
+		return EndPlayResponse{}, NewInternalError(err.Error())
 	}
 
-	return nil
+	return EndPlayResponse{ClientID: clientID, Balance: balance}, nil
 }
 
 // PRIVATE METHODS

@@ -56,6 +56,7 @@ function handleWebSocketMessage(event) {
             break;
         case "endplay":
             console.log(data.payload)
+            updateBalance(data.payload.balance)
             break;
 
     }

@@ -131,11 +131,12 @@ func (s *WebSocketServer) handleEndPlayMessage(ws *websocket.Conn, msg WsMessage
 
 	log.Printf("Handling End Play Message for User ID: %d", payload.ClientID)
 
-	if err := s.service.EndPlay(payload.ClientID); err != nil {
+	endPlayResponse, err := s.service.EndPlay(payload.ClientID)
+	if err != nil {
 		return err
 	}
 
-	return s.sendResponse(ws, MessageTypeEndPlay, true)
+	return s.sendResponse(ws, MessageTypeEndPlay, endPlayResponse)
 }
 
 // sendResponse sends a response back through the WebSocket connection
