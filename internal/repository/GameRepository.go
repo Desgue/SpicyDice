@@ -1,9 +1,12 @@
-package main
+package repository
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/Desgue/SpicyDice/internal/appErrors"
+	"github.com/Desgue/SpicyDice/internal/domain"
 )
 
 type GameRepository struct {
@@ -21,9 +24,9 @@ func (gr *GameRepository) GetBalance(playerID int) (float64, error) {
 	query := `SELECT balance FROM player WHERE id = $1`
 	if err := gr.db.QueryRow(query, playerID).Scan(&balance); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, NewUserNotFoundError(fmt.Sprintf("No player found with ID: %d", playerID))
+			return 0, appErrors.NewUserNotFoundError(fmt.Sprintf("No player found with ID: %d", playerID))
 		}
-		return 0, NewInternalError(fmt.Sprintf("Database error: %v", err))
+		return 0, appErrors.NewInternalError(fmt.Sprintf("Database error: %v", err))
 	}
 	return balance, nil
 }
@@ -59,8 +62,8 @@ func (gr *GameRepository) IncreaseBalance(playerID int, amount float64) (float64
 
 }
 
-func (gr *GameRepository) CreateGameSession(sess GameSessionRequest) (GameSession, error) {
-	var session GameSession
+func (gr *GameRepository) CreateGameSession(sess domain.GameSessionRequest) (domain.GameSession, error) {
+	var session domain.GameSession
 	query := `
 		INSERT INTO game_session (player_id, bet_amount, dice_result, won, active, session_start)
 		VALUES
@@ -88,14 +91,14 @@ func (gr *GameRepository) CreateGameSession(sess GameSessionRequest) (GameSessio
 			&session.SessionEnd,
 		)
 	if err != nil {
-		return GameSession{}, fmt.Errorf("error creating game session for player id %d", sess.PlayerID)
+		return domain.GameSession{}, fmt.Errorf("error creating game session for player id %d", sess.PlayerID)
 	}
 
 	return session, nil
 
 }
-func (gr *GameRepository) GetActiveSession(playerID int) (*GameSession, error) {
-	var session GameSession
+func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, error) {
+	var session domain.GameSession
 	query := `
 		SELECT session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end FROM game_session 
 		WHERE player_id = $1

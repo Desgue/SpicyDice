@@ -7,11 +7,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Desgue/SpicyDice/internal/repository"
+	"github.com/Desgue/SpicyDice/internal/server"
+	"github.com/Desgue/SpicyDice/internal/service"
 	_ "github.com/lib/pq"
-)
-
-const (
-	PORT string = ":8080"
 )
 
 func main() {
@@ -33,9 +32,9 @@ func main() {
 		log.Fatalf("could not reach database: %s", err)
 	}
 
-	gameRepository := NewGameRepository(db)
-	gameService := NewGameService(gameRepository)
-	gameServer := NewWebSocketServer(gameService)
+	gameRepository := repository.NewGameRepository(db)
+	gameService := service.NewGameService(gameRepository)
+	gameServer := server.NewWebSocketServer(gameService)
 
 	http.HandleFunc("/", serveHome)
 	fs := http.FileServer(http.Dir("./frontend"))
