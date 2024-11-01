@@ -6,10 +6,11 @@ import (
 )
 
 type Repository interface {
-	GetBalance(userId int) (float64, error)
-	DeductBalance(userId int, amount float64) (float64, error)
+	GetBalance(playerID int) (float64, error)
+	DeductBalance(playerID int, amount float64) (float64, error)
 	CreateGameSession(sess GameSessionRequest) (GameSession, error)
-	EndPlay()
+	GetActiveSession(playerID int) (*GameSession, error)
+	CloseCurrentGameSession(clientID int) error
 }
 
 type MessageType string

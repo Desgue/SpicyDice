@@ -44,3 +44,10 @@ func NewUserNotFoundError(details string) *GameError {
 		Details: details,
 	}
 }
+
+func NewActiveSessionError(details string) *GameError {
+	return &GameError{
+		Message: "Player already has an active session",
+		Details: details,
+	}
+}

@@ -32,15 +32,27 @@ func (gs *GameService) GetBalance(userID int) (WalletResponse, error) {
 
 func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
+
+	// VALIDATE USER DO NOT HAS AN ACTIVE SESSION BEFORE PLACING A BET
+	activeSession, err := gs.repo.GetActiveSession(msg.ClientID)
+	if err != nil {
+		return PlayResponse{}, NewInternalError(err.Error())
+	}
+	if activeSession != nil {
+		return PlayResponse{}, NewActiveSessionError("Cannot place a bet because the player already has an active session.")
+	}
+
 	balance, err := gs.repo.GetBalance(msg.ClientID)
 	if err != nil {
 		return PlayResponse{}, NewInternalError(err.Error())
 	}
 
+	// VALIDATE USER BET AMOUNT
 	if err := gs.validateBetAmount(msg.BetAmount, balance); err != nil {
 		return PlayResponse{}, err
 	}
 
+	// GAME LOGIC
 	newBalance, err := gs.repo.DeductBalance(msg.ClientID, msg.BetAmount)
 	if err != nil {
 		return PlayResponse{}, NewInternalError(err.Error())
@@ -64,7 +76,20 @@ func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 }
 
 func (gs *GameService) EndPlay(clientID int) error {
-	log.Printf("\nUpdating session for client id -> %d", clientID)
+	log.Printf("\nFinishing play session for client id -> %d", clientID)
+
+	// VALIDATE USER HAS AN ACTIVE SESSION BEFORE ENDING THE PLAY SESSION
+	activeSession, err := gs.repo.GetActiveSession(clientID)
+	if err != nil {
+		return NewInternalError(err.Error())
+	}
+	if activeSession == nil {
+		return NewActiveSessionError(fmt.Sprintf("Client ID %d does not have an active session.", clientID))
+	}
+
+	if err := gs.repo.CloseCurrentGameSession(clientID); err != nil {
+		return NewInternalError(err.Error())
+	}
 
 	return nil
 }
