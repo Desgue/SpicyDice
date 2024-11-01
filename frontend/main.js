@@ -1,9 +1,8 @@
 const SPIN_DURATION = 3000;
 let selectedBetType = null;
 let ws = null;
-let clientId = Math.floor(Math.random() * 100);
+let clientId = Math.floor(Math.random() * 1000);
 
-// Connect WebSocket
 function connectWebSocket() {
     if (window["WebSocket"]) {
         ws = new WebSocket(`ws://${document.location.host}/ws/spicy-dice`);
@@ -12,7 +11,7 @@ function connectWebSocket() {
         };
         ws.onclose = () => {
             console.log('Disconnected from WebSocket');
-            setTimeout(connectWebSocket, 3000); // Reconnect after 3 seconds
+            setTimeout(connectWebSocket, 3000);
         };
         ws.onopen = () => {
             console.log('Connected to WebSocket');
