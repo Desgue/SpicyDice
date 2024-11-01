@@ -5,6 +5,23 @@ import "encoding/json"
 type MessageType string
 type BetType string
 
+func (m MessageType) IsValid() bool {
+	switch m {
+	case Wallet, Play, EndPlay:
+		return true
+	default:
+		return false
+	}
+}
+func (m BetType) IsValid() bool {
+	switch m {
+	case Odd, Even:
+		return true
+	default:
+		return false
+	}
+}
+
 const (
 	Wallet  MessageType = "wallet"
 	Play    MessageType = "play"

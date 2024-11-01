@@ -17,10 +17,23 @@ func NewInternalError(details string) *GameError {
 		Details: details,
 	}
 }
-
 func NewInvalidInputError(details string) *GameError {
 	return &GameError{
 		Message: "Invalid input provided",
+		Details: details,
+	}
+}
+
+func NewInsufficientFundsError(details string) *GameError {
+	return &GameError{
+		Message: "Bet amount exceeds available balance",
+		Details: details,
+	}
+}
+
+func NewInvalidBetAmountError(details string) *GameError {
+	return &GameError{
+		Message: "Invalid bet amount",
 		Details: details,
 	}
 }
