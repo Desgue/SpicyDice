@@ -13,36 +13,45 @@ const (
 
 var balance = 1000.0
 
-// Placeholder function to get the user balance
-func getBalance(userID int) (WalletResponse, error) {
+type GameService struct {
+	repo Repository
+}
+
+func NewGameService(repo Repository) *GameService {
+	return &GameService{
+		repo: repo,
+	}
+}
+
+func (gs *GameService) GetBalance(userID int) (WalletResponse, error) {
 	return WalletResponse{ClientID: userID, Balance: balance}, nil // Replace with actual database call
 }
 
-// Placeholder function to process the play
-func processPlay(msg PlayPayload) (PlayResponse, error) {
+func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
 
-	if err := validateBetAmount(msg.BetAmount, balance); err != nil {
+	if err := gs.validateBetAmount(msg.BetAmount, balance); err != nil {
 		return PlayResponse{}, err
 	}
 
 	balance -= msg.BetAmount
 
-	diceSides := 6 // TODO: Implement more then 6 sided dice?
-	diceResult := rollDice(diceSides)
-	won := outcome(msg.BetType, diceResult)
+	diceSides := 6 // TODO: Implement more than 6 sided dice?
+	diceResult := gs.rollDice(diceSides)
+	won := gs.outcome(msg.BetType, diceResult)
 
 	return PlayResponse{DiceResult: diceResult, Won: won}, nil
 }
 
-// Placeholder function to end the play session
-func endPlay(clientId int) error {
-	log.Printf("Updating session for client id -> %d", clientId)
+func (gs *GameService) EndPlay(clientID int) error {
+	log.Printf("Updating session for client id -> %d", clientID)
 
 	return nil // Replace with actual session finalization logic
 }
 
-func validateBetAmount(betAmount, balance float64) error {
+// PRIVATE METHODS
+
+func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	var details string
 
 	if betAmount > balance {
@@ -72,11 +81,11 @@ func validateBetAmount(betAmount, balance float64) error {
 	return nil
 }
 
-func rollDice(sides int) int {
+func (gs *GameService) rollDice(sides int) int {
 	return rand.Intn(sides) + 1
 }
 
-func outcome(betType BetType, diceResult int) bool {
+func (gs *GameService) outcome(betType BetType, diceResult int) bool {
 	isEven := diceResult%2 == 0
 	return (betType == Even && isEven) || (betType == Odd && !isEven)
 }

@@ -2,12 +2,18 @@ package main
 
 import "encoding/json"
 
+type Repository interface {
+	GetBalance()
+	ProcessPlay()
+	EndPlay()
+}
+
 type MessageType string
 type BetType string
 
 func (m MessageType) IsValid() bool {
 	switch m {
-	case Wallet, Play, EndPlay:
+	case MessageTypeWallet, MessageTypePlay, MessageTypeEndPlay:
 		return true
 	default:
 		return false
@@ -23,11 +29,11 @@ func (m BetType) IsValid() bool {
 }
 
 const (
-	Wallet  MessageType = "wallet"
-	Play    MessageType = "play"
-	EndPlay MessageType = "endplay"
-	Even    BetType     = "even"
-	Odd     BetType     = "odd"
+	MessageTypeWallet  MessageType = "wallet"
+	MessageTypePlay    MessageType = "play"
+	MessageTypeEndPlay MessageType = "endplay"
+	Even               BetType     = "even"
+	Odd                BetType     = "odd"
 )
 
 type WsMessage struct {
