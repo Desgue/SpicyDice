@@ -34,9 +34,10 @@ function connectWebSocket() {
 // Handle incoming WebSocket messages
 function handleWebSocketMessage(event) {
     const data = JSON.parse(event.data);
+    console.log(data)
     switch (data.type) {
         case "wallet":
-            console.log("wallet")
+            console.log("wallet: ", data.payload.balance)
             updateBalance(data.payload.balance);
             break;
         case "play":

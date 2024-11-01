@@ -37,3 +37,10 @@ func NewInvalidBetAmountError(details string) *GameError {
 		Details: details,
 	}
 }
+
+func NewUserNotFoundError(details string) *GameError {
+	return &GameError{
+		Message: "User not found",
+		Details: details,
+	}
+}

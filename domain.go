@@ -3,7 +3,7 @@ package main
 import "encoding/json"
 
 type Repository interface {
-	GetBalance()
+	GetBalance(userId int) (*float64, error)
 	ProcessPlay()
 	EndPlay()
 }

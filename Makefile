@@ -60,6 +60,11 @@ down:
 	@echo "Stopping all services..."
 	docker-compose down
 
+.PHONY: down-v
+down-v:
+	@echo "Stopping all services..."
+	docker-compose down -v
+
 .PHONY: clean
 clean: down
 	@echo "Cleaning up Docker images..."

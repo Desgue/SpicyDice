@@ -24,7 +24,11 @@ func NewGameService(repo Repository) *GameService {
 }
 
 func (gs *GameService) GetBalance(userID int) (WalletResponse, error) {
-	return WalletResponse{ClientID: userID, Balance: balance}, nil // Replace with actual database call
+	balance, err := gs.repo.GetBalance(userID)
+	if err != nil {
+		return WalletResponse{}, err
+	}
+	return WalletResponse{ClientID: userID, Balance: *balance}, nil
 }
 
 func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
@@ -44,7 +48,7 @@ func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 }
 
 func (gs *GameService) EndPlay(clientID int) error {
-	log.Printf("Updating session for client id -> %d", clientID)
+	log.Printf("\nUpdating session for client id -> %d", clientID)
 
 	return nil // Replace with actual session finalization logic
 }
