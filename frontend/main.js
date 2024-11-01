@@ -41,6 +41,7 @@ function handleWebSocketMessage(event) {
             updateBalance(data.payload.balance);
             break;
         case "play":
+            updateBalance(data.payload.balance)
             setTimeout(() => {
                 handleGameResult(data.payload);
                 // Send end play request

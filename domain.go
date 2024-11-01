@@ -3,7 +3,8 @@ package main
 import "encoding/json"
 
 type Repository interface {
-	GetBalance(userId int) (*float64, error)
+	GetBalance(userId int) (float64, error)
+	DeductBalance(userId int, amount float64) (float64, error)
 	ProcessPlay()
 	EndPlay()
 }
@@ -57,8 +58,9 @@ type PlayPayload struct {
 }
 
 type PlayResponse struct {
-	DiceResult int  `json:"dice_result"`
-	Won        bool `json:"won"`
+	DiceResult int     `json:"dice_result"`
+	Won        bool    `json:"won"`
+	Balance    float64 `json:"balance"`
 }
 
 type EndPlayPayload struct {

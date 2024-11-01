@@ -65,6 +65,12 @@ down-v:
 	@echo "Stopping all services..."
 	docker-compose down -v
 
+.PHONY: restart
+restart: down up
+
+.PHONY: restart-v
+restart: down-v up
+
 .PHONY: clean
 clean: down
 	@echo "Cleaning up Docker images..."

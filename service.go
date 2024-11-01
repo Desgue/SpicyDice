@@ -11,8 +11,6 @@ const (
 	MaxBetAmount = 1000.0
 )
 
-var balance = 1000.0
-
 type GameService struct {
 	repo Repository
 }
@@ -28,29 +26,35 @@ func (gs *GameService) GetBalance(userID int) (WalletResponse, error) {
 	if err != nil {
 		return WalletResponse{}, err
 	}
-	return WalletResponse{ClientID: userID, Balance: *balance}, nil
+	return WalletResponse{ClientID: userID, Balance: balance}, nil
 }
 
 func (gs *GameService) ProcessPlay(msg PlayPayload) (PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
+	balance, err := gs.repo.GetBalance(msg.ClientID)
+	if err != nil {
+		return PlayResponse{}, err
+	}
 
 	if err := gs.validateBetAmount(msg.BetAmount, balance); err != nil {
 		return PlayResponse{}, err
 	}
 
-	balance -= msg.BetAmount
-
+	newBalance, err := gs.repo.DeductBalance(msg.ClientID, msg.BetAmount)
+	if err != nil {
+		return PlayResponse{}, NewInternalError(err.Error())
+	}
 	diceSides := 6 // TODO: Implement more than 6 sided dice?
 	diceResult := gs.rollDice(diceSides)
-	won := gs.outcome(msg.BetType, diceResult)
+	won := gs.calculateOutcome(msg.BetType, diceResult)
 
-	return PlayResponse{DiceResult: diceResult, Won: won}, nil
+	return PlayResponse{DiceResult: diceResult, Won: won, Balance: newBalance}, nil
 }
 
 func (gs *GameService) EndPlay(clientID int) error {
 	log.Printf("\nUpdating session for client id -> %d", clientID)
 
-	return nil // Replace with actual session finalization logic
+	return nil
 }
 
 // PRIVATE METHODS
@@ -89,7 +93,7 @@ func (gs *GameService) rollDice(sides int) int {
 	return rand.Intn(sides) + 1
 }
 
-func (gs *GameService) outcome(betType BetType, diceResult int) bool {
+func (gs *GameService) calculateOutcome(betType BetType, diceResult int) bool {
 	isEven := diceResult%2 == 0
 	return (betType == Even && isEven) || (betType == Odd && !isEven)
 }
