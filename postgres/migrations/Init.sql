@@ -15,4 +15,22 @@ CREATE TABLE IF NOT EXISTS  "game_session" (
   FOREIGN KEY ("user_id") REFERENCES "user" ("id") ON DELETE CASCADE
 );
 
-ALTER TABLE "game_session" ADD FOREIGN KEY ("user_id") REFERENCES "user" ("id");
+CREATE OR REPLACE FUNCTION random_decimal(min_val decimal, max_val decimal) 
+RETURNS decimal AS $$
+BEGIN
+    RETURN (random() * (max_val - min_val) + min_val)::decimal(10,2);
+END;
+$$ LANGUAGE plpgsql;
+
+TRUNCATE TABLE "user" CASCADE;
+ALTER SEQUENCE "user_id_seq" RESTART WITH 1;
+ALTER SEQUENCE "game_session_session_id_seq" RESTART WITH 1;
+
+WITH generate_series AS (
+    SELECT generate_series(1, 1000) AS id
+)
+INSERT INTO "user" ("balance")
+SELECT 
+    random_decimal(10, 10000)
+FROM 
+    generate_series;
