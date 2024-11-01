@@ -179,7 +179,4 @@ Response:
 - Clean Architecture pattern
 - Services layer for game logic
 - Repository layer for data persistence
-- Domain-driven design with clear entity separation
 - PostgreSQL for data storage
-
-Required environment variables and deployment instructions are in the provided deployment guide.
