@@ -41,10 +41,8 @@ function handleWebSocketMessage(event) {
             updateBalance(data.payload.balance);
             break;
         case "play":
-            updateBalance(data.payload.balance)
             setTimeout(() => {
                 handleGameResult(data.payload);
-                // Send end play request
                 ws.send(JSON.stringify({
                     type: 'endplay',
                     payload: {
@@ -56,7 +54,15 @@ function handleWebSocketMessage(event) {
             break;
         case "endplay":
             console.log(data.payload)
-            updateBalance(data.payload.balance)
+            ws.send(JSON.stringify({
+                type: 'wallet',
+                payload: {
+                    client_id: data.payload.client_id
+                }
+            }));
+            break;
+        case "error":
+            console.error(data.payload)
             break;
 
     }

@@ -13,17 +13,6 @@ func (m *MockRepository) GetBalance(playerID int) (float64, error) {
 	args := m.Called(playerID)
 	return args.Get(0).(float64), args.Error(1)
 }
-
-func (m *MockRepository) DeductBalance(playerID int, amount float64) (float64, error) {
-	args := m.Called(playerID, amount)
-	return args.Get(0).(float64), args.Error(1)
-}
-
-func (m *MockRepository) IncreaseBalance(playerID int, amount float64) (float64, error) {
-	args := m.Called(playerID, amount)
-	return args.Get(0).(float64), args.Error(1)
-}
-
 func (m *MockRepository) CreateGameSession(sess domain.GameSessionRequest) (domain.GameSession, error) {
 	args := m.Called(sess)
 	return args.Get(0).(domain.GameSession), args.Error(1)
@@ -40,4 +29,9 @@ func (m *MockRepository) GetActiveSession(playerID int) (*domain.GameSession, er
 func (m *MockRepository) CloseCurrentGameSession(clientID int) error {
 	args := m.Called(clientID)
 	return args.Error(0)
+}
+
+func (m *MockRepository) ExecutePlayTransaction(msg domain.PlayPayload, diceResult int, won bool) (domain.GameSession, float64, error) {
+	args := m.Called(msg, diceResult, won)
+	return args.Get(0).(domain.GameSession), args.Get(1).(float64), args.Error(2)
 }

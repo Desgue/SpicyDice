@@ -7,11 +7,10 @@ import (
 
 type Repository interface {
 	GetBalance(playerID int) (float64, error)
-	DeductBalance(playerID int, amount float64) (float64, error)
-	IncreaseBalance(playerID int, amount float64) (float64, error)
 	CreateGameSession(sess GameSessionRequest) (GameSession, error)
 	GetActiveSession(playerID int) (*GameSession, error)
 	CloseCurrentGameSession(clientID int) error
+	ExecutePlayTransaction(msg PlayPayload, diceResult int, won bool, balance float64) (GameSession, float64, error)
 }
 
 type MessageType string
@@ -67,6 +66,7 @@ type PlayResponse struct {
 	DiceResult int     `json:"dice_result"`
 	Won        bool    `json:"won"`
 	Balance    float64 `json:"balance"`
+	BetAmount  float64 `json:"bet_amount"`
 }
 type EndPlayResponse struct {
 	ClientID int `json:"client_id"`

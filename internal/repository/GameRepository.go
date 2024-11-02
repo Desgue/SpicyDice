@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Desgue/SpicyDice/internal/appErrors"
 	"github.com/Desgue/SpicyDice/internal/domain"
@@ -30,39 +31,64 @@ func (gr *GameRepository) GetBalance(playerID int) (float64, error) {
 	}
 	return balance, nil
 }
-func (gr *GameRepository) DeductBalance(playerID int, amount float64) (float64, error) {
-	var newBalance float64
+
+func (gr *GameRepository) updateBalance(tx *sql.Tx, playerID int, newBalance float64) (float64, error) {
+	var endBalance float64
 	query := `
 		UPDATE player
-		SET balance = balance - $1
+		SET balance = $1
 		WHERE id = $2 
-		AND balance >= $1
 		RETURNING balance
 		;`
-	if err := gr.db.QueryRow(query, amount, playerID).Scan(&newBalance); err != nil {
-		return 0, fmt.Errorf("error deducting balance for player id %d", playerID)
+	if err := tx.QueryRow(query, newBalance, playerID).Scan(&endBalance); err != nil {
+		return 0, fmt.Errorf("error updating balance for player id %d", playerID)
 	}
 
-	return newBalance, nil
+	return endBalance, nil
 
 }
-func (gr *GameRepository) IncreaseBalance(playerID int, amount float64) (float64, error) {
-	var newBalance float64
+func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, error) {
+	var session domain.GameSession
 	query := `
-		UPDATE player
-		SET balance = balance + $1
-		WHERE id = $2 
-		RETURNING balance
-		;`
-	if err := gr.db.QueryRow(query, amount, playerID).Scan(&newBalance); err != nil {
-		return 0, fmt.Errorf("error increasing balance for player id %d", playerID)
+		SELECT session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end FROM game_session 
+		WHERE player_id = $1
+		AND active = true
+	;`
+
+	err := gr.db.QueryRow(
+		query,
+		playerID,
+	).
+		Scan(
+			&session.SessionID,
+			&session.PlayerID,
+			&session.BetAmount,
+			&session.DiceResult,
+			&session.Won,
+			&session.Active,
+			&session.SessionStart,
+			&session.SessionEnd,
+		)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error retrieving active session for player id %d", playerID)
 	}
 
-	return newBalance, nil
-
+	return &session, nil
 }
 
 func (gr *GameRepository) CreateGameSession(sess domain.GameSessionRequest) (domain.GameSession, error) {
+	tx, err := gr.db.Begin()
+	if err != nil {
+		return domain.GameSession{}, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+	return gr.createGameSession(tx, sess)
+}
+
+func (gr *GameRepository) createGameSession(tx *sql.Tx, sess domain.GameSessionRequest) (domain.GameSession, error) {
 	var session domain.GameSession
 	query := `
 		INSERT INTO game_session (player_id, bet_amount, dice_result, won, active, session_start)
@@ -71,7 +97,7 @@ func (gr *GameRepository) CreateGameSession(sess domain.GameSessionRequest) (dom
 		RETURNING session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end
 	;`
 
-	err := gr.db.QueryRow(
+	err := tx.QueryRow(
 		query,
 		sess.PlayerID,
 		sess.BetAmount,
@@ -97,36 +123,6 @@ func (gr *GameRepository) CreateGameSession(sess domain.GameSessionRequest) (dom
 	return session, nil
 
 }
-func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, error) {
-	var session domain.GameSession
-	query := `
-		SELECT session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end FROM game_session 
-		WHERE player_id = $1
-		AND active = true
-	;`
-
-	err := gr.db.QueryRow(
-		query,
-		playerID).
-		Scan(
-			&session.SessionID,
-			&session.PlayerID,
-			&session.BetAmount,
-			&session.DiceResult,
-			&session.Won,
-			&session.Active,
-			&session.SessionStart,
-			&session.SessionEnd,
-		)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("error retrieving active session for player id %d", playerID)
-	}
-
-	return &session, nil
-}
 
 func (gr *GameRepository) CloseCurrentGameSession(clientID int) error {
 	query := `
@@ -150,4 +146,56 @@ func (gr *GameRepository) CloseCurrentGameSession(clientID int) error {
 	}
 
 	return nil
+}
+
+func (gr *GameRepository) ExecutePlayTransaction(msg domain.PlayPayload, diceResult int, won bool, balance float64) (domain.GameSession, float64, error) {
+	var session domain.GameSession
+	var multiplier = 2.0
+
+	tx, err := gr.db.Begin()
+	if err != nil {
+		return domain.GameSession{}, 0, appErrors.NewInternalError(fmt.Sprintf("error creating database transaction: %s", err))
+	}
+	defer tx.Rollback()
+
+	// Check for active session
+	activeSession, err := gr.GetActiveSession(msg.ClientID)
+	if err != nil {
+		return domain.GameSession{}, 0, appErrors.NewInternalError(err.Error())
+	}
+	if activeSession != nil {
+		return domain.GameSession{}, 0, appErrors.NewActiveSessionError("Player already has an active session")
+	}
+
+	// Create the game session
+	session, err = gr.createGameSession(tx, domain.GameSessionRequest{
+		PlayerID:     msg.ClientID,
+		BetAmount:    msg.BetAmount,
+		DiceResult:   diceResult,
+		Won:          won,
+		Active:       true,
+		SessionStart: time.Now(),
+	})
+	if err != nil {
+		return domain.GameSession{}, 0, err
+	}
+
+	// Update balance with win multiplier if applicable
+	if won {
+		balance += (msg.BetAmount * multiplier) - msg.BetAmount
+	} else {
+		balance -= msg.BetAmount
+	}
+
+	// Save new balance to DB
+	_, err = gr.updateBalance(tx, msg.ClientID, balance)
+	if err != nil {
+		return domain.GameSession{}, 0, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return domain.GameSession{}, 0, appErrors.NewInternalError("error commiting transaction")
+	}
+
+	return session, balance, nil
 }

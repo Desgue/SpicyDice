@@ -1,10 +1,10 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
-	"time"
 
 	"github.com/Desgue/SpicyDice/internal/appErrors"
 	"github.com/Desgue/SpicyDice/internal/domain"
@@ -36,15 +36,6 @@ func (gs *GameService) GetBalance(userID int) (domain.WalletResponse, error) {
 func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
 
-	// VALIDATE USER DO NOT HAS AN ACTIVE SESSION BEFORE PLACING A BET
-	activeSession, err := gs.repo.GetActiveSession(msg.ClientID)
-	if err != nil {
-		return domain.PlayResponse{}, appErrors.NewInternalError(err.Error())
-	}
-	if activeSession != nil {
-		return domain.PlayResponse{}, appErrors.NewActiveSessionError("Cannot place a bet because the player already has an active session.")
-	}
-
 	balance, err := gs.repo.GetBalance(msg.ClientID)
 	if err != nil {
 		return domain.PlayResponse{}, appErrors.NewInternalError(err.Error())
@@ -60,24 +51,15 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse,
 	diceResult := gs.rollDice(diceSides)
 	haveWon := gs.calculateOutcome(msg.BetType, diceResult)
 
-	// TODO: Implement Transaction To make sure session creation and balance change are sync?
-	if _, err = gs.repo.CreateGameSession(domain.GameSessionRequest{
-		PlayerID:     msg.ClientID,
-		BetAmount:    msg.BetAmount,
-		DiceResult:   diceResult,
-		Won:          haveWon,
-		Active:       true,
-		SessionStart: time.Now(),
-	}); err != nil {
-		return domain.PlayResponse{}, appErrors.NewInternalError(err.Error())
+	_, newBalance, err := gs.repo.ExecutePlayTransaction(msg, diceResult, haveWon, balance)
+	gameRrr := &appErrors.GameError{}
+	if err != nil {
+		if errors.As(err, &gameRrr) {
+			return domain.PlayResponse{}, err
+		}
+		return domain.PlayResponse{}, appErrors.NewInternalError(fmt.Sprintf("Error while executing play transaction: %s", err))
 	}
 
-	// TODO: Add multiplier options ?
-	multiplier := 2.0
-	newBalance, err := gs.handleBalanceChange(msg.BetAmount, multiplier, msg.ClientID, haveWon)
-	if err != nil {
-		return domain.PlayResponse{}, err
-	}
 	return domain.PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance}, nil
 }
 
@@ -130,23 +112,6 @@ func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	}
 
 	return nil
-}
-
-func (gs *GameService) handleBalanceChange(bet, multiplier float64, clientID int, won bool) (float64, error) {
-	var newBalance float64
-	var err error
-	if won {
-		newBalance, err = gs.repo.IncreaseBalance(clientID, bet*multiplier-bet)
-		if err != nil {
-			return 0, appErrors.NewInternalError(err.Error())
-		}
-	} else {
-		newBalance, err = gs.repo.DeductBalance(clientID, bet)
-		if err != nil {
-			return 0, appErrors.NewInternalError(err.Error())
-		}
-	}
-	return newBalance, nil
 }
 
 func (gs *GameService) rollDice(sides int) int {
