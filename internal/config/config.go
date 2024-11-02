@@ -45,7 +45,7 @@ func New() *Config {
 			ssl:      getEnv("DB_SSL", "disabled"),
 			port:     getEnvAsInt("DB_PORT", 5432),
 		},
-		Server: ServerConfig{Port: getEnv("EXPOSED_PORT", "80")},
+		Server: ServerConfig{Port: getEnv("SERVER_PORT", "80")},
 	}
 }
 
