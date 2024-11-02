@@ -2,26 +2,27 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 
+	"github.com/Desgue/SpicyDice/internal/config"
 	"github.com/Desgue/SpicyDice/internal/repository"
 	"github.com/Desgue/SpicyDice/internal/server"
 	"github.com/Desgue/SpicyDice/internal/service"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
+}
+
 func main() {
-	connStr := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PORT"),
-	)
+	conf := config.New()
+	connStr := conf.Postgres.String()
+
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalf("error open database: %s", err.Error())
