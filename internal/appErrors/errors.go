@@ -9,6 +9,7 @@ const (
 	InvalidBetAmountErrorCode
 	UserNotFoundErrorCode
 	ActiveSessionErrorCode
+	DiceRollErrorCode
 )
 
 type GameError struct {
@@ -64,6 +65,14 @@ func NewActiveSessionError(details string) *GameError {
 	return &GameError{
 		Code:    ActiveSessionErrorCode,
 		Message: "Active session error",
+		Details: details,
+	}
+}
+
+func NewDiceRollError(details string) *GameError {
+	return &GameError{
+		Code:    DiceRollErrorCode,
+		Message: "Error rolling dice",
 		Details: details,
 	}
 }

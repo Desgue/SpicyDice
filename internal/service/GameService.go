@@ -1,10 +1,11 @@
 package service
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
+	"math/big"
 
 	"github.com/Desgue/SpicyDice/internal/appErrors"
 	"github.com/Desgue/SpicyDice/internal/domain"
@@ -48,7 +49,10 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse,
 
 	// GAME LOGIC
 	diceSides := 6 // TODO: Implement more than 6 sided dice?
-	diceResult := gs.rollDice(diceSides)
+	diceResult, err := gs.rollDice(diceSides)
+	if err != nil {
+		return domain.PlayResponse{}, appErrors.NewDiceRollError(err.Error())
+	}
 	haveWon := gs.calculateOutcome(msg.BetType, diceResult)
 
 	_, newBalance, err := gs.repo.ExecutePlayTransaction(msg, diceResult, haveWon, balance)
@@ -114,8 +118,13 @@ func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	return nil
 }
 
-func (gs *GameService) rollDice(sides int) int {
-	return rand.Intn(sides) + 1
+func (gs *GameService) rollDice(sides int) (int, error) {
+	bigI, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
+	if err != nil {
+		return 0, err
+	}
+	roll := int(bigI.Int64()) + 1
+	return roll, nil
 }
 
 func (gs *GameService) calculateOutcome(betType domain.BetType, diceResult int) bool {
