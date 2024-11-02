@@ -64,51 +64,6 @@ func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, e
 	return &session, nil
 }
 
-func (gr *GameRepository) CreateGameSession(sess domain.GameSessionRequest) (domain.GameSession, error) {
-	tx, err := gr.db.Begin()
-	if err != nil {
-		return domain.GameSession{}, fmt.Errorf("failed to start transaction: %w", err)
-	}
-	defer tx.Rollback()
-	return gr.createGameSession(tx, sess)
-}
-
-func (gr *GameRepository) createGameSession(tx *sql.Tx, sess domain.GameSessionRequest) (domain.GameSession, error) {
-	var session domain.GameSession
-	query := `
-		INSERT INTO game_session (player_id, bet_amount, dice_result, won, active, session_start)
-		VALUES
-		($1, $2, $3, $4, $5, $6)
-		RETURNING session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end
-	;`
-
-	err := tx.QueryRow(
-		query,
-		sess.PlayerID,
-		sess.BetAmount,
-		sess.DiceResult,
-		sess.Won,
-		sess.Active,
-		sess.SessionStart,
-	).
-		Scan(
-			&session.SessionID,
-			&session.PlayerID,
-			&session.BetAmount,
-			&session.DiceResult,
-			&session.Won,
-			&session.Active,
-			&session.SessionStart,
-			&session.SessionEnd,
-		)
-	if err != nil {
-		return domain.GameSession{}, fmt.Errorf("error creating game session for player id %d", sess.PlayerID)
-	}
-
-	return session, nil
-
-}
-
 func (gr *GameRepository) CloseCurrentGameSession(clientID int) error {
 	query := `
 		UPDATE game_session
@@ -221,6 +176,42 @@ func (gr *GameRepository) updateBalance(tx *sql.Tx, update domain.BalanceUpdate)
 		return ErrUnaffectedRows
 	}
 	return nil
+
+}
+
+func (gr *GameRepository) createGameSession(tx *sql.Tx, sess domain.GameSessionRequest) (domain.GameSession, error) {
+	var session domain.GameSession
+	query := `
+		INSERT INTO game_session (player_id, bet_amount, dice_result, won, active, session_start)
+		VALUES
+		($1, $2, $3, $4, $5, $6)
+		RETURNING session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end
+	;`
+
+	err := tx.QueryRow(
+		query,
+		sess.PlayerID,
+		sess.BetAmount,
+		sess.DiceResult,
+		sess.Won,
+		sess.Active,
+		sess.SessionStart,
+	).
+		Scan(
+			&session.SessionID,
+			&session.PlayerID,
+			&session.BetAmount,
+			&session.DiceResult,
+			&session.Won,
+			&session.Active,
+			&session.SessionStart,
+			&session.SessionEnd,
+		)
+	if err != nil {
+		return domain.GameSession{}, fmt.Errorf("error creating game session for player id %d", sess.PlayerID)
+	}
+
+	return session, nil
 
 }
 

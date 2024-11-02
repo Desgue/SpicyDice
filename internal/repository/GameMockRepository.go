@@ -13,10 +13,6 @@ func (m *MockRepository) GetBalance(playerID int) (float64, error) {
 	args := m.Called(playerID)
 	return args.Get(0).(float64), args.Error(1)
 }
-func (m *MockRepository) CreateGameSession(sess domain.GameSessionRequest) (domain.GameSession, error) {
-	args := m.Called(sess)
-	return args.Get(0).(domain.GameSession), args.Error(1)
-}
 
 func (m *MockRepository) GetActiveSession(playerID int) (*domain.GameSession, error) {
 	args := m.Called(playerID)

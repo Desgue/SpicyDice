@@ -6,7 +6,6 @@ import (
 
 type Repository interface {
 	GetBalance(playerID int) (float64, error)
-	CreateGameSession(sess GameSessionRequest) (GameSession, error)
 	GetActiveSession(playerID int) (*GameSession, error)
 	CloseCurrentGameSession(clientID int) error
 	ExecutePlayTransaction(t PlayTransaction) (GameSession, float64, error)
