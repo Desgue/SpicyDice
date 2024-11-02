@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Desgue/SpicyDice/internal/appErrors"
 	"github.com/Desgue/SpicyDice/internal/domain"
@@ -49,18 +50,22 @@ func (s *WebSocketServer) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure connection is closed when handler returns
+	go s.handleConnection(ws)
+}
+
+func (s *WebSocketServer) handleConnection(ws *websocket.Conn) {
 	defer func() {
 		if err := ws.Close(); err != nil {
 			log.Printf("Error closing connection: %v", err)
 		}
 	}()
 
-	s.handleConnection(ws)
-}
+	ws.SetPingHandler(func(string) error {
+		return ws.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(time.Second))
+	})
 
-func (s *WebSocketServer) handleConnection(ws *websocket.Conn) {
 	for {
+		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 		var message domain.WsMessage
 		err := ws.ReadJSON(&message)
 		if err != nil {
