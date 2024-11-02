@@ -30,13 +30,12 @@ type Config struct {
 	Postgres PostgresConfig
 }
 
-// New returns a new Config struct
 func New() *Config {
 	return &Config{
 		Postgres: PostgresConfig{
 			host:     getEnv("DB_HOST", "db"),
 			user:     getEnv("DB_USER", "postgres"),
-			password: getEnv("DB_PASSWORD", ""),
+			password: getEnv("DB_PASSWORD", "p4ssw0rd"),
 			name:     getEnv("DB_NAME", "postgres"),
 			ssl:      getEnv("DB_SSL", "disabled"),
 			port:     getEnvAsInt("DB_PORT", 5432),
