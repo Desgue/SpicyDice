@@ -1,7 +1,7 @@
 const SPIN_DURATION = 3000;
 let selectedBetType = null;
 let ws = null;
-let clientId = Math.floor(Math.random() * 1000);
+let clientId = Math.ceil(Math.random() * 1);
 
 function connectWebSocket() {
     if (window["WebSocket"]) {
