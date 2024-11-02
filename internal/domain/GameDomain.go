@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"encoding/json"
 	"time"
 )
 
@@ -41,11 +40,6 @@ const (
 	Even               BetType     = "even"
 	Odd                BetType     = "odd"
 )
-
-type WsMessage struct {
-	Type    MessageType     `json:"type"`
-	Payload json.RawMessage `json:"payload"`
-}
 
 type WalletPayload struct {
 	ClientID int `json:"client_id"`

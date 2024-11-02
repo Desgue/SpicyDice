@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/Desgue/SpicyDice/internal/appErrors"
@@ -14,8 +15,18 @@ import (
 )
 
 const (
-	PORT string = ":8080"
+	PORT            string        = ":8080"
+	tickDuration    time.Duration = 30 * time.Second
+	readBufferSize  int           = 1024
+	writeBufferSize int           = 1024
+	writeTimeout    time.Duration = 10 * time.Second
+	readTimeout     time.Duration = 60 * time.Second
 )
+
+type WsMessage struct {
+	Type    domain.MessageType `json:"type"`
+	Payload json.RawMessage    `json:"payload"`
+}
 
 type WebSocketServer struct {
 	service  *service.GameService
@@ -26,8 +37,8 @@ func NewWebSocketServer(service *service.GameService) *WebSocketServer {
 	return &WebSocketServer{
 		service: service,
 		upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
+			ReadBufferSize:  readBufferSize,
+			WriteBufferSize: writeBufferSize,
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
@@ -50,50 +61,111 @@ func (s *WebSocketServer) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go s.handleConnection(ws)
+	conn := connection{
+		service:      s.service,
+		ws:           ws,
+		messagesChan: make(chan WsMessage),
+		doneChan:     make(chan struct{}),
+	}
+
+	go conn.readPump()
+	go conn.writePump()
+
 }
 
-func (s *WebSocketServer) handleConnection(ws *websocket.Conn) {
+type connection struct {
+	service      *service.GameService
+	ws           *websocket.Conn
+	mu           sync.Mutex
+	messagesChan chan (WsMessage)
+	doneChan     chan (struct{})
+	closeOnce    sync.Once
+}
+
+func (c *connection) readPump() {
 	defer func() {
-		if err := ws.Close(); err != nil {
-			log.Printf("Error closing connection: %v", err)
-		}
+		log.Println("Closing connection from readPump routine...")
+		c.cleanUpOnce()
 	}()
 
-	ws.SetPingHandler(func(string) error {
-		return ws.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(time.Second))
+	c.ws.SetPongHandler(func(string) error {
+		return c.ws.SetReadDeadline(time.Now().Add(readTimeout))
 	})
 
 	for {
-		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
-		var message domain.WsMessage
-		err := ws.ReadJSON(&message)
+		c.ws.SetReadDeadline(time.Now().Add(readTimeout))
+		var message WsMessage
+		err := c.ws.ReadJSON(&message)
 		if err != nil {
 			log.Printf("Error reading message: %v", err)
 			break
 		}
 
-		if err = s.handleMessage(ws, message); err != nil {
+		if err = c.handleMessage(message); err != nil {
 			log.Printf("Error handling message type '%s': %v", message.Type, err)
-			s.sendResponse(ws, domain.MessageTypeError, err)
+			c.writeToChan(domain.MessageTypeError, err)
 		}
-
 	}
 }
 
-func (s *WebSocketServer) handleMessage(ws *websocket.Conn, msg domain.WsMessage) error {
+func (c *connection) writePump() {
+	ticker := time.NewTicker(tickDuration)
+
+	defer func() {
+		log.Println("Closing connection from writePump routine...")
+		ticker.Stop()
+		c.cleanUpOnce()
+	}()
+
+	c.ws.SetPingHandler(func(string) error {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return c.ws.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(time.Second))
+	})
+	for {
+
+		select {
+		case <-ticker.C:
+			c.mu.Lock()
+			c.ws.SetWriteDeadline(time.Now().Add(writeTimeout))
+			if err := c.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+				c.mu.Unlock()
+				log.Printf("Error sending ping: %v", err)
+				return
+			}
+			c.mu.Unlock()
+
+		case message := <-c.messagesChan:
+			c.mu.Lock()
+			c.ws.SetWriteDeadline(time.Now().Add(writeTimeout))
+			if err := c.ws.WriteJSON(message); err != nil {
+				log.Printf("error writing json message: %s", err)
+				c.mu.Unlock()
+				return
+			}
+			c.mu.Unlock()
+		case <-c.doneChan:
+			return
+		}
+
+	}
+
+}
+
+func (c *connection) handleMessage(msg WsMessage) error {
 	switch msg.Type {
 	case domain.MessageTypeWallet:
-		return s.handleWalletMessage(ws, msg)
+		return c.handleWalletMessage(msg)
 	case domain.MessageTypePlay:
-		return s.handlePlayMessage(ws, msg)
+		return c.handlePlayMessage(msg)
 	case domain.MessageTypeEndPlay:
-		return s.handleEndPlayMessage(ws, msg)
+		return c.handleEndPlayMessage(msg)
 	default:
 		return appErrors.NewInvalidInputError(fmt.Sprintf("Unknown message type: %s", msg.Type))
 	}
 }
-func (s *WebSocketServer) handleWalletMessage(ws *websocket.Conn, msg domain.WsMessage) error {
+
+func (c *connection) handleWalletMessage(msg WsMessage) error {
 	var payload domain.WalletPayload
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return appErrors.NewInvalidInputError("Invalid wallet payload")
@@ -101,16 +173,15 @@ func (s *WebSocketServer) handleWalletMessage(ws *websocket.Conn, msg domain.WsM
 
 	log.Printf("Handling Wallet Message for User ID: %d", payload.ClientID)
 
-	balance, err := s.service.GetBalance(payload.ClientID)
+	balance, err := c.service.GetBalance(payload.ClientID)
 	if err != nil {
 		return err
 	}
-
-	return s.sendResponse(ws, domain.MessageTypeWallet, balance)
+	return c.writeToChan(domain.MessageTypeWallet, balance)
 }
 
 // handlePlayMessage processes play-related messages
-func (s *WebSocketServer) handlePlayMessage(ws *websocket.Conn, msg domain.WsMessage) error {
+func (c *connection) handlePlayMessage(msg WsMessage) error {
 	var payload domain.PlayPayload
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return appErrors.NewInvalidInputError("Invalid play payload")
@@ -118,16 +189,16 @@ func (s *WebSocketServer) handlePlayMessage(ws *websocket.Conn, msg domain.WsMes
 
 	log.Printf("Handling Play Message for User ID: %d", payload.ClientID)
 
-	result, err := s.service.ProcessPlay(payload)
+	result, err := c.service.ProcessPlay(payload)
 	if err != nil {
 		return err
 	}
 
-	return s.sendResponse(ws, domain.MessageTypePlay, result)
+	return c.writeToChan(domain.MessageTypePlay, result)
 }
 
 // handleEndPlayMessage processes end-play messages
-func (s *WebSocketServer) handleEndPlayMessage(ws *websocket.Conn, msg domain.WsMessage) error {
+func (c *connection) handleEndPlayMessage(msg WsMessage) error {
 	var payload domain.EndPlayPayload
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return appErrors.NewInvalidInputError("Invalid end-play payload")
@@ -135,23 +206,38 @@ func (s *WebSocketServer) handleEndPlayMessage(ws *websocket.Conn, msg domain.Ws
 
 	log.Printf("Handling End Play Message for User ID: %d", payload.ClientID)
 
-	endPlayResponse, err := s.service.EndPlay(payload.ClientID)
+	endPlayResponse, err := c.service.EndPlay(payload.ClientID)
 	if err != nil {
 		return err
 	}
 
-	return s.sendResponse(ws, domain.MessageTypeEndPlay, endPlayResponse)
+	return c.writeToChan(domain.MessageTypeEndPlay, endPlayResponse)
 }
 
-// sendResponse sends a response back through the WebSocket connection
-func (s *WebSocketServer) sendResponse(ws *websocket.Conn, msgType domain.MessageType, data interface{}) error {
+func (c *connection) writeToChan(msgType domain.MessageType, data interface{}) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("error marshaling response: %w", err)
+		return fmt.Errorf("error marshaling incomming message: %w", err)
 	}
+	// The select handles the case where the messageChan is full and prevents indefinitely block
+	select {
+	case c.messagesChan <- WsMessage{Type: msgType, Payload: payload}:
+		return nil
+	case <-c.doneChan:
+		return fmt.Errorf("connection closed")
+	default:
+		return fmt.Errorf("message channel full")
+	}
+}
 
-	return ws.WriteJSON(domain.WsMessage{
-		Type:    msgType,
-		Payload: payload,
+// Makes sure all close operations happens only one time to avoid race conditions
+func (c *connection) cleanUpOnce() {
+	c.closeOnce.Do(func() {
+		log.Println("Closing connection...")
+		close(c.doneChan)
+		if err := c.ws.Close(); err != nil {
+			log.Printf("Error closing connection: %v", err)
+		}
+		close(c.messagesChan)
 	})
 }
