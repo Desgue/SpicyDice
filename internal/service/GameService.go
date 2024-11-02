@@ -8,12 +8,8 @@ import (
 	"math/big"
 
 	"github.com/Desgue/SpicyDice/internal/appErrors"
+	"github.com/Desgue/SpicyDice/internal/config"
 	"github.com/Desgue/SpicyDice/internal/domain"
-)
-
-const (
-	MinBetAmount = 1.0
-	MaxBetAmount = 1000.0
 )
 
 type GameService struct {
@@ -109,13 +105,13 @@ func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 		return appErrors.NewInvalidBetAmountError(details)
 	}
 
-	if betAmount < MinBetAmount {
-		details = fmt.Sprintf("minimum bet amount is %.2f", MinBetAmount)
+	if betAmount < config.New().Game.MinBetAmount {
+		details = fmt.Sprintf("minimum bet amount is %.2f", config.New().Game.MinBetAmount)
 		return appErrors.NewInvalidBetAmountError(details)
 	}
 
-	if betAmount > MaxBetAmount {
-		details = fmt.Sprintf("maximum bet amount is %.2f", MaxBetAmount)
+	if betAmount > config.New().Game.MaxBetAmount {
+		details = fmt.Sprintf("maximum bet amount is %.2f", config.New().Game.MaxBetAmount)
 		return appErrors.NewInvalidBetAmountError(details)
 	}
 
