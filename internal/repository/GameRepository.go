@@ -32,21 +32,6 @@ func (gr *GameRepository) GetBalance(playerID int) (float64, error) {
 	return balance, nil
 }
 
-func (gr *GameRepository) updateBalance(tx *sql.Tx, playerID int, newBalance float64) (float64, error) {
-	var endBalance float64
-	query := `
-		UPDATE player
-		SET balance = $1
-		WHERE id = $2 
-		RETURNING balance
-		;`
-	if err := tx.QueryRow(query, newBalance, playerID).Scan(&endBalance); err != nil {
-		return 0, fmt.Errorf("error updating balance for player id %d", playerID)
-	}
-
-	return endBalance, nil
-
-}
 func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, error) {
 	var session domain.GameSession
 	query := `
@@ -148,9 +133,10 @@ func (gr *GameRepository) CloseCurrentGameSession(clientID int) error {
 	return nil
 }
 
-func (gr *GameRepository) ExecutePlayTransaction(msg domain.PlayPayload, diceResult int, won bool, balance float64) (domain.GameSession, float64, error) {
+func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (domain.GameSession, float64, error) {
 	var session domain.GameSession
 	var multiplier = 2.0
+	var changeAmount float64
 
 	tx, err := gr.db.Begin()
 	if err != nil {
@@ -158,8 +144,7 @@ func (gr *GameRepository) ExecutePlayTransaction(msg domain.PlayPayload, diceRes
 	}
 	defer tx.Rollback()
 
-	// Check for active session
-	activeSession, err := gr.GetActiveSession(msg.ClientID)
+	activeSession, err := gr.GetActiveSession(t.Message.ClientID)
 	if err != nil {
 		return domain.GameSession{}, 0, appErrors.NewInternalError(err.Error())
 	}
@@ -167,12 +152,11 @@ func (gr *GameRepository) ExecutePlayTransaction(msg domain.PlayPayload, diceRes
 		return domain.GameSession{}, 0, appErrors.NewActiveSessionError("Player already has an active session")
 	}
 
-	// Create the game session
 	session, err = gr.createGameSession(tx, domain.GameSessionRequest{
-		PlayerID:     msg.ClientID,
-		BetAmount:    msg.BetAmount,
-		DiceResult:   diceResult,
-		Won:          won,
+		PlayerID:     t.Message.ClientID,
+		BetAmount:    t.Message.BetAmount,
+		DiceResult:   t.DiceResult,
+		Won:          t.Won,
 		Active:       true,
 		SessionStart: time.Now(),
 	})
@@ -180,22 +164,69 @@ func (gr *GameRepository) ExecutePlayTransaction(msg domain.PlayPayload, diceRes
 		return domain.GameSession{}, 0, err
 	}
 
-	// Update balance with win multiplier if applicable
-	if won {
-		balance += (msg.BetAmount * multiplier) - msg.BetAmount
+	if t.Won {
+		changeAmount = (t.Message.BetAmount * multiplier) - t.Message.BetAmount
 	} else {
-		balance -= msg.BetAmount
+		changeAmount = -t.Message.BetAmount
 	}
 
-	// Save new balance to DB
-	_, err = gr.updateBalance(tx, msg.ClientID, balance)
+	err = gr.updateBalance(tx, domain.BalanceUpdate{
+		PlayerID:     t.Message.ClientID,
+		ChangeAmount: changeAmount,
+	})
 	if err != nil {
 		return domain.GameSession{}, 0, err
 	}
 
 	if err = tx.Commit(); err != nil {
-		return domain.GameSession{}, 0, appErrors.NewInternalError("error commiting transaction")
+		return domain.GameSession{}, 0, fmt.Errorf("failed to commit play transaction: %w", err)
 	}
 
-	return session, balance, nil
+	return session, 0, nil
+}
+
+func (gr *GameRepository) updateBalance(tx *sql.Tx, update domain.BalanceUpdate) error {
+	var currBalance float64
+	balanceLockQuery := `
+		SELECT balance FROM player
+		WHERE id = $1
+		FOR UPDATE
+		;`
+	if err := tx.QueryRow(balanceLockQuery, update.PlayerID).Scan(&currBalance); err != nil {
+		return fmt.Errorf("error locking row: %w", err)
+	}
+
+	newBalance := currBalance + update.ChangeAmount
+	if err := validateBalance(newBalance); err != nil {
+		return err
+	}
+
+	updateQuery := `
+	UPDATE player 
+	SET 
+		balance = $1
+	WHERE 
+		id = $2 
+	`
+
+	result, err := tx.Exec(updateQuery, newBalance, update.PlayerID)
+	if err != nil {
+		return fmt.Errorf("failed to update balance: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if affected == 0 {
+		return ErrUnaffectedRows
+	}
+	return nil
+
+}
+
+func validateBalance(balance float64) error {
+	if balance < 0 {
+		return ErrNegativeBalance
+	}
+	return nil
 }

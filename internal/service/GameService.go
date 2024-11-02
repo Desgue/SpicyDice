@@ -55,7 +55,11 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse,
 	}
 	haveWon := gs.calculateOutcome(msg.BetType, diceResult)
 
-	_, newBalance, err := gs.repo.ExecutePlayTransaction(msg, diceResult, haveWon, balance)
+	_, newBalance, err := gs.repo.ExecutePlayTransaction(domain.PlayTransaction{
+		Message:    msg,
+		DiceResult: diceResult,
+		Won:        haveWon,
+	})
 	gameRrr := &appErrors.GameError{}
 	if err != nil {
 		if errors.As(err, &gameRrr) {

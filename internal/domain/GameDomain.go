@@ -9,7 +9,7 @@ type Repository interface {
 	CreateGameSession(sess GameSessionRequest) (GameSession, error)
 	GetActiveSession(playerID int) (*GameSession, error)
 	CloseCurrentGameSession(clientID int) error
-	ExecutePlayTransaction(msg PlayPayload, diceResult int, won bool, balance float64) (GameSession, float64, error)
+	ExecutePlayTransaction(t PlayTransaction) (GameSession, float64, error)
 }
 
 type MessageType string
@@ -89,4 +89,15 @@ type GameSessionRequest struct {
 	Won          bool      `json:"won"`
 	Active       bool      `json:"active"`
 	SessionStart time.Time `json:"session_start"`
+}
+
+type PlayTransaction struct {
+	Message    PlayPayload
+	DiceResult int
+	Won        bool
+}
+
+type BalanceUpdate struct {
+	PlayerID     int
+	ChangeAmount float64
 }
