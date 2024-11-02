@@ -2,17 +2,18 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/Desgue/SpicyDice/internal/config"
 	"github.com/Desgue/SpicyDice/internal/domain"
 	"github.com/Desgue/SpicyDice/internal/service"
 	"github.com/gorilla/websocket"
 )
 
 const (
-	PORT            string        = ":8080"
 	tickDuration    time.Duration = 30 * time.Second
 	readBufferSize  int           = 1024
 	writeBufferSize int           = 1024
@@ -44,9 +45,9 @@ func NewWebSocketServer(service *service.GameService) *WebSocketServer {
 }
 func (s *WebSocketServer) Run() {
 	http.HandleFunc("/ws/spicy-dice", s.Serve)
-
-	log.Printf("Starting WebSocket server on %s", PORT)
-	err := http.ListenAndServe(PORT, nil)
+	port := config.New().Server.Port
+	log.Printf("Starting WebSocket server on %s", port)
+	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
