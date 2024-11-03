@@ -69,7 +69,7 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload, dice DiceRoller) (dom
 		return domain.PlayResponse{}, appErrors.NewInternalError(fmt.Sprintf("Error while executing play transaction: %s", err))
 	}
 
-	return domain.PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance}, nil
+	return domain.PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance, BetAmount: msg.BetAmount}, nil
 }
 
 func (gs *GameService) EndPlay(clientID int) (domain.EndPlayResponse, error) {

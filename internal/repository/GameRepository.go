@@ -107,7 +107,7 @@ func (gr *GameRepository) CloseCurrentGameSession(clientID int) error {
 func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (domain.GameSession, float64, error) {
 	var session domain.GameSession
 	var multiplier = 2.0
-	var newBalance float64
+	var changeAmount float64
 
 	tx, err := gr.db.Begin()
 	if err != nil {
@@ -136,14 +136,14 @@ func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (doma
 	}
 
 	if t.Won {
-		newBalance = (t.Message.BetAmount * multiplier) - t.Message.BetAmount
+		changeAmount = (t.Message.BetAmount * multiplier) - t.Message.BetAmount
 	} else {
-		newBalance = -t.Message.BetAmount
+		changeAmount = -t.Message.BetAmount
 	}
 
-	err = gr.updateBalance(tx, domain.BalanceUpdate{
+	newBalance, err := gr.updateBalance(tx, domain.BalanceUpdate{
 		PlayerID:     t.Message.ClientID,
-		ChangeAmount: newBalance,
+		ChangeAmount: changeAmount,
 	})
 	if err != nil {
 		return domain.GameSession{}, 0, err
@@ -156,7 +156,7 @@ func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (doma
 	return session, newBalance, nil
 }
 
-func (gr *GameRepository) updateBalance(tx *sql.Tx, update domain.BalanceUpdate) error {
+func (gr *GameRepository) updateBalance(tx *sql.Tx, update domain.BalanceUpdate) (float64, error) {
 	var currBalance float64
 	balanceLockQuery := `
 		SELECT balance FROM player
@@ -164,12 +164,12 @@ func (gr *GameRepository) updateBalance(tx *sql.Tx, update domain.BalanceUpdate)
 		FOR UPDATE
 		;`
 	if err := tx.QueryRow(balanceLockQuery, update.PlayerID).Scan(&currBalance); err != nil {
-		return fmt.Errorf("error locking row: %w", err)
+		return 0.0, fmt.Errorf("error locking row: %w", err)
 	}
 
 	newBalance := currBalance + update.ChangeAmount
 	if err := validateBalance(newBalance); err != nil {
-		return err
+		return 0.0, err
 	}
 
 	updateQuery := `
@@ -182,16 +182,16 @@ func (gr *GameRepository) updateBalance(tx *sql.Tx, update domain.BalanceUpdate)
 
 	result, err := tx.Exec(updateQuery, newBalance, update.PlayerID)
 	if err != nil {
-		return fmt.Errorf("failed to update balance: %w", err)
+		return 0.0, fmt.Errorf("failed to update balance: %w", err)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get affected rows: %w", err)
+		return 0.0, fmt.Errorf("failed to get affected rows: %w", err)
 	}
 	if affected == 0 {
-		return ErrUnaffectedRows
+		return 0.0, ErrUnaffectedRows
 	}
-	return nil
+	return newBalance, nil
 
 }
 
