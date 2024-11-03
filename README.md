@@ -157,7 +157,6 @@ Response:
 ```json
 {
   "client_id": 1,
-  "balance": 110.00  // Updated balance after win/loss
 }
 ```
 
