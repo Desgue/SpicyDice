@@ -40,7 +40,7 @@ const (
 	Odd                BetType     = "odd"
 )
 
-type WalletPayload struct {
+type WalletRequest struct {
 	ClientID int `json:"client_id"`
 }
 
@@ -49,7 +49,7 @@ type WalletResponse struct {
 	Balance  float64 `json:"balance"`
 }
 
-type PlayPayload struct {
+type PlayRequest struct {
 	ClientID  int     `json:"client_id"`
 	BetAmount float64 `json:"bet_amount"`
 	BetType   BetType `json:"bet_type"`
@@ -66,7 +66,7 @@ type EndPlayResponse struct {
 }
 
 // The payload from the frontend
-type EndPlayPayload struct {
+type EndPlayRequest struct {
 	ClientID int `json:"client_id"`
 }
 
@@ -91,7 +91,7 @@ type GameSessionRequest struct {
 }
 
 type PlayTransaction struct {
-	Message    PlayPayload
+	Message    PlayRequest
 	DiceResult int
 	Won        bool
 }

@@ -229,7 +229,7 @@ func TestProcessPlay(t *testing.T) {
 				return config
 			},
 			transaction: domain.PlayTransaction{
-				Message: domain.PlayPayload{
+				Message: domain.PlayRequest{
 					ClientID:  1,
 					BetAmount: 100,
 					BetType:   domain.Odd,

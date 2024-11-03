@@ -107,7 +107,7 @@ func (c *connection) handleMessage(msg WsMessage) error {
 
 // handleWalletMessage processes wallet-related messages
 func (c *connection) handleWalletMessage(msg WsMessage) error {
-	var payload domain.WalletPayload
+	var payload domain.WalletRequest
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return appErrors.NewInvalidInputError("Invalid wallet payload")
 	}
@@ -123,7 +123,7 @@ func (c *connection) handleWalletMessage(msg WsMessage) error {
 
 // handlePlayMessage processes play-related messages
 func (c *connection) handlePlayMessage(msg WsMessage) error {
-	var payload domain.PlayPayload
+	var payload domain.PlayRequest
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return appErrors.NewInvalidInputError("Invalid play payload")
 	}
@@ -140,7 +140,7 @@ func (c *connection) handlePlayMessage(msg WsMessage) error {
 
 // handleEndPlayMessage processes end-play messages
 func (c *connection) handleEndPlayMessage(msg WsMessage) error {
-	var payload domain.EndPlayPayload
+	var payload domain.EndPlayRequest
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return appErrors.NewInvalidInputError("Invalid end-play payload")
 	}

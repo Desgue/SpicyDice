@@ -35,7 +35,7 @@ func (gs *GameService) GetBalance(userID int) (domain.WalletResponse, error) {
 	return domain.WalletResponse{ClientID: userID, Balance: balance}, nil
 }
 
-func (gs *GameService) ProcessPlay(msg domain.PlayPayload, dice DiceRoller) (domain.PlayResponse, error) {
+func (gs *GameService) ProcessPlay(msg domain.PlayRequest, dice DiceRoller) (domain.PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
 
 	balance, err := gs.repo.GetBalance(msg.ClientID)

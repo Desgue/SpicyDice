@@ -28,7 +28,7 @@ const (
 func TestProcessPlay_BusinessLogic(t *testing.T) {
 	testCases := []struct {
 		name              string
-		payload           domain.PlayPayload
+		payload           domain.PlayRequest
 		setupMock         func(*repository.MockRepository)
 		expectedBalance   float64
 		expectedWin       bool
@@ -37,7 +37,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 	}{
 		{
 			name: "insuficient_funds",
-			payload: domain.PlayPayload{
+			payload: domain.PlayRequest{
 				ClientID:  1,
 				BetAmount: TestInvalidBet,
 				BetType:   domain.Even,
@@ -53,7 +53,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 		},
 		{
 			name: "successful_bet_within_balance",
-			payload: domain.PlayPayload{
+			payload: domain.PlayRequest{
 				ClientID:  1,
 				BetAmount: TestValidBet,
 				BetType:   domain.Odd,
@@ -61,7 +61,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 			setupMock: func(mockRepo *repository.MockRepository) {
 				mockRepo.On("GetBalance", 1).Return(TestBalance, nil)
 				mockRepo.On("ExecutePlayTransaction", domain.PlayTransaction{
-					Message: domain.PlayPayload{
+					Message: domain.PlayRequest{
 						ClientID:  1,
 						BetAmount: 100,
 						BetType:   domain.Odd,
@@ -76,7 +76,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 		},
 		{
 			name: "valid_bet_active_session_exists",
-			payload: domain.PlayPayload{
+			payload: domain.PlayRequest{
 				ClientID:  1,
 				BetAmount: TestValidBet,
 				BetType:   domain.Odd,
@@ -84,7 +84,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 			setupMock: func(mockRepo *repository.MockRepository) {
 				mockRepo.On("GetBalance", 1).Return(TestBalance, nil)
 				mockRepo.On("ExecutePlayTransaction", domain.PlayTransaction{
-					Message: domain.PlayPayload{
+					Message: domain.PlayRequest{
 						ClientID:  1,
 						BetAmount: TestValidBet,
 						BetType:   domain.Odd,
@@ -108,7 +108,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 			assert.Equal(t, res.Won, tt.expectedWin)
 			if tt.expectError {
 				assert.Equal(t, err.(*appErrors.GameError).Code, tt.expectedErrorCode)
-				assert.Empty(t, res, domain.PlayPayload{})
+				assert.Empty(t, res, domain.PlayRequest{})
 			} else {
 				assert.NoError(t, err)
 			}
