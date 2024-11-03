@@ -16,6 +16,11 @@ type GameService struct {
 	repo domain.Repository
 }
 
+var (
+	MinBetAmount = config.New().Game.MinBetAmount
+	MaxBetAmount = config.New().Game.MaxBetAmount
+)
+
 func NewGameService(repo domain.Repository) *GameService {
 	return &GameService{
 		repo: repo,
@@ -106,12 +111,12 @@ func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	}
 
 	if betAmount < config.New().Game.MinBetAmount {
-		details = fmt.Sprintf("minimum bet amount is %.2f", config.New().Game.MinBetAmount)
+		details = fmt.Sprintf("minimum bet amount is %.2f", MinBetAmount)
 		return appErrors.NewInvalidBetAmountError(details)
 	}
 
 	if betAmount > config.New().Game.MaxBetAmount {
-		details = fmt.Sprintf("maximum bet amount is %.2f", config.New().Game.MaxBetAmount)
+		details = fmt.Sprintf("maximum bet amount is %.2f", MaxBetAmount)
 		return appErrors.NewInvalidBetAmountError(details)
 	}
 

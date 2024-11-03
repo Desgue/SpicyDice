@@ -46,7 +46,7 @@ func NewWebSocketServer(service *service.GameService) *WebSocketServer {
 func (s *WebSocketServer) Run() {
 	http.HandleFunc("/ws/spicy-dice", s.Serve)
 	port := config.New().Server.Port
-	log.Printf("Starting WebSocket server on %s", port)
+	log.Printf("Starting WebSocket server on port :%s", port)
 	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)

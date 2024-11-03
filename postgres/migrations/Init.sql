@@ -30,10 +30,10 @@ ALTER SEQUENCE player_id_seq RESTART WITH 1;
 ALTER SEQUENCE game_session_session_id_seq RESTART WITH 1;
 
 WITH generate_series AS (
-    SELECT generate_series(1, 1000) AS id
+    SELECT generate_series(1, 100000) AS id
 )
 INSERT INTO player (balance)
 SELECT 
-    random_decimal(10, 10000)
+    random_decimal(100, 10000)
 FROM 
     generate_series;

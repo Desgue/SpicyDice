@@ -48,13 +48,13 @@ func New() *Config {
 			user:     getEnv("DB_USER", "postgres"),
 			password: getEnv("DB_PASSWORD", "p4ssw0rd"),
 			name:     getEnv("DB_NAME", "postgres"),
-			ssl:      getEnv("DB_SSL", "disabled"),
+			ssl:      getEnv("DB_SSL", "disable"),
 			port:     getEnvAsInt("DB_PORT", 5432),
 		},
 		Server: ServerConfig{Port: getEnv("SERVER_PORT", "80")},
 		Game: GameConfig{
 			MinBetAmount: getEnvAsFloat("MIN_BET", 10.0),
-			MaxBetAmount: getEnvAsFloat("MAX_BET", 10.0),
+			MaxBetAmount: getEnvAsFloat("MAX_BET", 100.0),
 		},
 	}
 }

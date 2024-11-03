@@ -33,6 +33,20 @@ func (gr *GameRepository) GetBalance(playerID int) (float64, error) {
 }
 
 func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, error) {
+	tx, err := gr.db.Begin()
+	if err != nil {
+		return nil, appErrors.NewInternalError(fmt.Sprintf("error creating database transaction: %s", err))
+	}
+	defer tx.Rollback()
+
+	session, err := gr.getActiveSession(tx, playerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+func (gr *GameRepository) getActiveSession(tx *sql.Tx, playerID int) (*domain.GameSession, error) {
 	var session domain.GameSession
 	query := `
 		SELECT session_id, player_id, bet_amount, dice_result, won, active, session_start, session_end FROM game_session 
@@ -40,7 +54,7 @@ func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, e
 		AND active = true
 	;`
 
-	err := gr.db.QueryRow(
+	err := tx.QueryRow(
 		query,
 		playerID,
 	).
@@ -99,7 +113,7 @@ func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (doma
 	}
 	defer tx.Rollback()
 
-	activeSession, err := gr.GetActiveSession(t.Message.ClientID)
+	activeSession, err := gr.getActiveSession(tx, t.Message.ClientID)
 	if err != nil {
 		return domain.GameSession{}, 0, appErrors.NewInternalError(err.Error())
 	}

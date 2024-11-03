@@ -14,6 +14,9 @@ services:
       - DB_PASSWORD=p4ssw0rd
       - DB_NAME=postgres
       - DB_PORT=5432
+      - DB_SSL=disable
+      - MIN_BET=10
+      - MAX_BET=1000
       - SERVER_PORT=8080
     depends_on:
       db:
