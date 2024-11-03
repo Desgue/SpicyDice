@@ -3,123 +3,168 @@ package service
 import (
 	"testing"
 
+	"github.com/Desgue/SpicyDice/internal/appErrors"
+	"github.com/Desgue/SpicyDice/internal/config"
+	"github.com/Desgue/SpicyDice/internal/domain"
+	"github.com/Desgue/SpicyDice/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
-/* func TestProcessPlay(t *testing.T) {
-	tests := []struct {
-		name             string
-		clientID         int
-		betAmount        float64
-		betType          domain.BetType
-		setupMock        func(*repository.MockRepository)
-		expectedError    string
-		expectedBalance  float64
-		expectedDiceRoll int
-		expectedOutcome  bool
+type FakeDice struct {
+}
+
+func (fd FakeDice) Roll() (int, error) {
+	return 1, nil
+}
+
+const (
+	TestBalance             = 200.0
+	TestValidBet            = 100.0
+	TestInvalidBet          = 300.0
+	TestPostValidBetBalance = TestBalance + TestValidBet
+	TestBalanceWhenError    = 0.0
+)
+
+func TestProcessPlay_BusinessLogic(t *testing.T) {
+	testCases := []struct {
+		name              string
+		payload           domain.PlayPayload
+		setupMock         func(*repository.MockRepository)
+		expectedBalance   float64
+		expectedWin       bool
+		expectError       bool
+		expectedErrorCode int
 	}{
-				{
-		   			name:      "Valid Play",
-		   			clientID:  1,
-		   			betAmount: 100.0,
-		   			betType:   domain.Even,
-		   			setupMock: func(mockRepo *repository.MockRepository) {
-		   				mockRepo.On("GetBalance", 1).Return(500.0, nil)
-		   				payload := domain.PlayPayload{ClientID: 1, BetAmount: 100.0, BetType: domain.Even}
-		   				mockRepo.On("ExecutePlayTransaction", payload, 3, false).Return(domain.GameSession{}, 400.0, nil)
-
-		   			},
-		   			expectedError:   "",
-		   			expectedBalance: 400.0,
-		   		},
-		   		{
-		   			name:      "Insufficient Balance",
-		   			clientID:  1,
-		   			betAmount: 100.0,
-		   			betType:   domain.Even,
-		   			setupMock: func(mockRepo *repository.MockRepository) {
-
-		   				mockRepo.On("GetBalance", 1).Return(50.0, nil)
-		   				payload := domain.PlayPayload{ClientID: 1, BetAmount: 100.0, BetType: domain.Even}
-		   				mockRepo.On("ExecutePlayTransaction", payload, 4, true).Return(domain.GameSession{}, 400.0, nil)
-		   			},
-		   			expectedError: appErrors.NewInsufficientFundsError(fmt.Sprintf("bet amount %.2f exceeds available balance %.2f", 100.0, 50.0)).Error(),
-		   		},
 		{
-			name:      "Session Reuse",
-			clientID:  1,
-			betAmount: 100.0,
-			betType:   domain.Odd,
-			setupMock: func(mockRepo *repository.MockRepository) {
-				mockRepo.On("GetBalance", 1).Return(500.0, nil)
-				payload := domain.PlayPayload{ClientID: 1, BetAmount: 100.0, BetType: domain.Odd}
-				mockRepo.On("ExecutePlayTransaction", payload, 4, false).Return(domain.GameSession{}, 0, "active session")
+			name: "insuficient_funds",
+			payload: domain.PlayPayload{
+				ClientID:  1,
+				BetAmount: TestInvalidBet,
+				BetType:   domain.Even,
 			},
-			expectedError: "active session",
+			setupMock: func(mockRepo *repository.MockRepository) {
+				mockRepo.On("GetBalance", 1).Return(TestBalance, nil)
+
+			},
+			expectedBalance:   TestBalance,
+			expectedWin:       false,
+			expectError:       true,
+			expectedErrorCode: appErrors.InsufficientFundsErrorCode,
+		},
+		{
+			name: "successful_bet_within_balance",
+			payload: domain.PlayPayload{
+				ClientID:  1,
+				BetAmount: TestValidBet,
+				BetType:   domain.Odd,
+			},
+			setupMock: func(mockRepo *repository.MockRepository) {
+				mockRepo.On("GetBalance", 1).Return(TestBalance, nil)
+				mockRepo.On("ExecutePlayTransaction", domain.PlayTransaction{
+					Message: domain.PlayPayload{
+						ClientID:  1,
+						BetAmount: 100,
+						BetType:   domain.Odd,
+					},
+					DiceResult: 1,
+					Won:        true,
+				}).Return(domain.GameSession{}, TestPostValidBetBalance, nil)
+			},
+			expectedBalance: TestPostValidBetBalance,
+			expectedWin:     true,
+			expectError:     false,
+		},
+		{
+			name: "valid_bet_active_session_exists",
+			payload: domain.PlayPayload{
+				ClientID:  1,
+				BetAmount: TestValidBet,
+				BetType:   domain.Odd,
+			},
+			setupMock: func(mockRepo *repository.MockRepository) {
+				mockRepo.On("GetBalance", 1).Return(TestBalance, nil)
+				mockRepo.On("ExecutePlayTransaction", domain.PlayTransaction{
+					Message: domain.PlayPayload{
+						ClientID:  1,
+						BetAmount: TestValidBet,
+						BetType:   domain.Odd,
+					},
+					DiceResult: 1,
+					Won:        true,
+				}).Return(domain.GameSession{}, 0.0, appErrors.NewActiveSessionError(""))
+			},
+			expectedWin:       false,
+			expectError:       true,
+			expectedErrorCode: appErrors.ActiveSessionErrorCode,
 		},
 	}
-
-	for _, tt := range tests {
+	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := new(repository.MockRepository)
 			service := NewGameService(mockRepo)
 			tt.setupMock(mockRepo)
 
-			response, err := service.ProcessPlay(domain.PlayPayload{ClientID: tt.clientID, BetAmount: tt.betAmount, BetType: tt.betType})
-
-			if tt.expectedError != "" {
-				assert.ErrorContains(t, err, tt.expectedError)
+			res, err := service.ProcessPlay(tt.payload, FakeDice{})
+			assert.Equal(t, res.Won, tt.expectedWin)
+			if tt.expectError {
+				assert.Equal(t, err.(*appErrors.GameError).Code, tt.expectedErrorCode)
+				assert.Empty(t, res, domain.PlayPayload{})
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBalance, response.Balance)
 			}
 			mockRepo.AssertExpectations(t)
 		})
 	}
-} */
+}
 
 func TestValidateBetAmount(t *testing.T) {
 	tests := []struct {
-		name          string
-		betAmount     float64
-		balance       float64
-		expectedError string
+		name              string
+		betAmount         float64
+		balance           float64
+		expectError       bool
+		expectedErrorCode int
 	}{
 		{
-			name:          "Valid Bet",
-			betAmount:     100.0,
-			balance:       500.0,
-			expectedError: "",
+			name:        "Valid Bet",
+			betAmount:   100.0,
+			balance:     500.0,
+			expectError: false,
 		},
 		{
-			name:          "Bet Exceeds Balance",
-			betAmount:     600.0,
-			balance:       500.0,
-			expectedError: "exceeds available balance",
+			name:              "Bet Exceeds Balance",
+			betAmount:         600.0,
+			balance:           500.0,
+			expectError:       true,
+			expectedErrorCode: appErrors.InsufficientFundsErrorCode,
 		},
 		{
-			name:          "Negative Bet Amount",
-			betAmount:     -50.0,
-			balance:       500.0,
-			expectedError: "bet amount cannot be negative",
+			name:              "Negative Bet Amount",
+			betAmount:         -50.0,
+			balance:           500.0,
+			expectError:       true,
+			expectedErrorCode: appErrors.InvalidBetAmountErrorCode,
 		},
 		{
-			name:          "Zero Bet Amount",
-			betAmount:     0.0,
-			balance:       500.0,
-			expectedError: "bet amount cannot be zero",
+			name:              "Zero Bet Amount",
+			betAmount:         0.0,
+			balance:           500.0,
+			expectError:       true,
+			expectedErrorCode: appErrors.InvalidBetAmountErrorCode,
 		},
 		{
-			name:          "Bet Below Minimum",
-			betAmount:     0.5,
-			balance:       500.0,
-			expectedError: "minimum bet amount",
+			name:              "Bet Below Minimum",
+			betAmount:         config.New().Game.MinBetAmount - 1,
+			balance:           500.0,
+			expectError:       true,
+			expectedErrorCode: appErrors.InvalidBetAmountErrorCode,
 		},
 		{
-			name:          "Bet Above Maximum",
-			betAmount:     1500.0,
-			balance:       2000.0,
-			expectedError: "maximum bet amount",
+			name:              "Bet Above Maximum",
+			betAmount:         config.New().Game.MaxBetAmount + 1,
+			balance:           2000.0,
+			expectError:       true,
+			expectedErrorCode: appErrors.InvalidBetAmountErrorCode,
 		},
 	}
 
@@ -129,11 +174,12 @@ func TestValidateBetAmount(t *testing.T) {
 
 			err := service.validateBetAmount(tt.betAmount, tt.balance)
 
-			if tt.expectedError != "" {
-				assert.ErrorContains(t, err, tt.expectedError)
+			if tt.expectError {
+				assert.Equal(t, err.(*appErrors.GameError).Code, tt.expectedErrorCode)
 			} else {
 				assert.NoError(t, err)
 			}
+
 		})
 	}
 }

@@ -105,7 +105,7 @@ func (gr *GameRepository) CloseCurrentGameSession(clientID int) error {
 func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (domain.GameSession, float64, error) {
 	var session domain.GameSession
 	var multiplier = 2.0
-	var changeAmount float64
+	var newBalance float64
 
 	tx, err := gr.db.Begin()
 	if err != nil {
@@ -118,7 +118,7 @@ func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (doma
 		return domain.GameSession{}, 0, appErrors.NewInternalError(err.Error())
 	}
 	if activeSession != nil {
-		return domain.GameSession{}, 0, appErrors.NewActiveSessionError("Player already has an active session")
+		return *activeSession, 0, appErrors.NewActiveSessionError("Player already has an active session")
 	}
 
 	session, err = gr.createGameSession(tx, domain.GameSessionRequest{
@@ -134,14 +134,14 @@ func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (doma
 	}
 
 	if t.Won {
-		changeAmount = (t.Message.BetAmount * multiplier) - t.Message.BetAmount
+		newBalance = (t.Message.BetAmount * multiplier) - t.Message.BetAmount
 	} else {
-		changeAmount = -t.Message.BetAmount
+		newBalance = -t.Message.BetAmount
 	}
 
 	err = gr.updateBalance(tx, domain.BalanceUpdate{
 		PlayerID:     t.Message.ClientID,
-		ChangeAmount: changeAmount,
+		ChangeAmount: newBalance,
 	})
 	if err != nil {
 		return domain.GameSession{}, 0, err
@@ -151,7 +151,7 @@ func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (doma
 		return domain.GameSession{}, 0, fmt.Errorf("failed to commit play transaction: %w", err)
 	}
 
-	return session, 0, nil
+	return session, newBalance, nil
 }
 
 func (gr *GameRepository) updateBalance(tx *sql.Tx, update domain.BalanceUpdate) error {

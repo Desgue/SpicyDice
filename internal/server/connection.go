@@ -130,7 +130,7 @@ func (c *connection) handlePlayMessage(msg WsMessage) error {
 
 	log.Printf("Handling Play Message for User ID: %d", payload.ClientID)
 
-	result, err := c.service.ProcessPlay(payload)
+	result, err := c.service.ProcessPlay(payload, service.Dice{Sides: 6})
 	if err != nil {
 		return err
 	}

@@ -35,7 +35,7 @@ func (gs *GameService) GetBalance(userID int) (domain.WalletResponse, error) {
 	return domain.WalletResponse{ClientID: userID, Balance: balance}, nil
 }
 
-func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse, error) {
+func (gs *GameService) ProcessPlay(msg domain.PlayPayload, dice DiceRoller) (domain.PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
 
 	balance, err := gs.repo.GetBalance(msg.ClientID)
@@ -49,8 +49,8 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload) (domain.PlayResponse,
 	}
 
 	// GAME LOGIC
-	diceSides := 6 // TODO: Implement more than 6 sided dice?
-	diceResult, err := gs.rollDice(diceSides)
+
+	diceResult, err := dice.Roll()
 	if err != nil {
 		return domain.PlayResponse{}, appErrors.NewDiceRollError(err.Error())
 	}
@@ -123,8 +123,15 @@ func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	return nil
 }
 
-func (gs *GameService) rollDice(sides int) (int, error) {
-	bigI, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
+type DiceRoller interface {
+	Roll() (int, error)
+}
+type Dice struct {
+	Sides int
+}
+
+func (d Dice) Roll() (int, error) {
+	bigI, err := rand.Int(rand.Reader, big.NewInt(int64(d.Sides)))
 	if err != nil {
 		return 0, err
 	}
