@@ -10,10 +10,11 @@ import (
 	"github.com/Desgue/SpicyDice/internal/appErrors"
 	"github.com/Desgue/SpicyDice/internal/config"
 	"github.com/Desgue/SpicyDice/internal/domain"
+	"github.com/Desgue/SpicyDice/internal/repository"
 )
 
 type GameService struct {
-	repo domain.Repository
+	repo repository.Repository
 }
 
 var (
@@ -21,7 +22,7 @@ var (
 	MaxBetAmount = config.New().Game.MaxBetAmount
 )
 
-func NewGameService(repo domain.Repository) *GameService {
+func NewGameService(repo repository.Repository) *GameService {
 	return &GameService{
 		repo: repo,
 	}

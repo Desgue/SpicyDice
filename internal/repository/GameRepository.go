@@ -10,6 +10,12 @@ import (
 	"github.com/Desgue/SpicyDice/internal/domain"
 )
 
+type Repository interface {
+	GetBalance(playerID int) (float64, error)
+	GetActiveSession(playerID int) (*domain.GameSession, error)
+	CloseCurrentGameSession(clientID int) error
+	ProcessPlay(t domain.PlayTransaction) (domain.GameSession, float64, error)
+}
 type GameRepository struct {
 	db *sql.DB
 }

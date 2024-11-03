@@ -4,13 +4,6 @@ import (
 	"time"
 )
 
-type Repository interface {
-	GetBalance(playerID int) (float64, error)
-	GetActiveSession(playerID int) (*GameSession, error)
-	CloseCurrentGameSession(clientID int) error
-	ProcessPlay(t PlayTransaction) (GameSession, float64, error)
-}
-
 type MessageType string
 type BetType string
 
