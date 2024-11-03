@@ -44,10 +44,10 @@ type Config struct {
 func New() *Config {
 	return &Config{
 		Postgres: PostgresConfig{
-			host:     getEnv("DB_HOST", "db"),
-			user:     getEnv("DB_USER", "postgres"),
-			password: getEnv("DB_PASSWORD", "p4ssw0rd"),
-			name:     getEnv("DB_NAME", "postgres"),
+			host:     getEnv("DB_HOST", ""),
+			user:     getEnv("DB_USER", ""),
+			password: getEnv("DB_PASSWORD", ""),
+			name:     getEnv("DB_NAME", ""),
 			ssl:      getEnv("DB_SSL", "disable"),
 			port:     getEnvAsInt("DB_PORT", 5432),
 		},
@@ -80,6 +80,6 @@ func getEnvAsFloat(name string, defaultVal float64) float64 {
 	if value, err := strconv.ParseFloat(valueStr, 64); err == nil {
 		return value
 	}
-	log.Printf("could not parse %s to float, using default value...", name)
+	log.Printf("could not parse %s to float, using default value of %f", name, defaultVal)
 	return defaultVal
 }
