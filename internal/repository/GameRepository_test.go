@@ -156,7 +156,7 @@ func (cfg *testDBConfig) Cleanup() error {
 	return nil
 }
 
-func TestExecutePlayTransaction(t *testing.T) {
+func TestProcessPlay(t *testing.T) {
 
 	// CONFIGURE TESTCONTAINERS TO USE POSTGRES IMAGE
 	ctx := context.Background()
@@ -247,7 +247,7 @@ func TestExecutePlayTransaction(t *testing.T) {
 		}
 
 		// ASSERT TEST CASES
-		session, balance, err := repo.ExecutePlayTransaction(tc.transaction)
+		session, balance, err := repo.ProcessPlay(tc.transaction)
 
 		assert.Equal(t, tc.expectedBalance, balance)
 

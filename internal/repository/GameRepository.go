@@ -104,7 +104,7 @@ func (gr *GameRepository) CloseCurrentGameSession(clientID int) error {
 	return nil
 }
 
-func (gr *GameRepository) ExecutePlayTransaction(t domain.PlayTransaction) (domain.GameSession, float64, error) {
+func (gr *GameRepository) ProcessPlay(t domain.PlayTransaction) (domain.GameSession, float64, error) {
 	var session domain.GameSession
 	var multiplier = 2.0
 	var changeAmount float64

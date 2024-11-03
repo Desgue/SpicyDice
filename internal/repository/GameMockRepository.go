@@ -27,7 +27,7 @@ func (m *MockRepository) CloseCurrentGameSession(clientID int) error {
 	return args.Error(0)
 }
 
-func (m *MockRepository) ExecutePlayTransaction(transaction domain.PlayTransaction) (domain.GameSession, float64, error) {
+func (m *MockRepository) ProcessPlay(transaction domain.PlayTransaction) (domain.GameSession, float64, error) {
 	args := m.Called(transaction)
 	return args.Get(0).(domain.GameSession), args.Get(1).(float64), args.Error(2)
 }

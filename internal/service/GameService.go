@@ -42,13 +42,9 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload, dice DiceRoller) (dom
 	if err != nil {
 		return domain.PlayResponse{}, appErrors.NewInternalError(err.Error())
 	}
-
-	// VALIDATE USER BET AMOUNT
 	if err := gs.validateBetAmount(msg.BetAmount, balance); err != nil {
 		return domain.PlayResponse{}, err
 	}
-
-	// GAME LOGIC
 
 	diceResult, err := dice.Roll()
 	if err != nil {
@@ -56,7 +52,7 @@ func (gs *GameService) ProcessPlay(msg domain.PlayPayload, dice DiceRoller) (dom
 	}
 	haveWon := gs.calculateOutcome(msg.BetType, diceResult)
 
-	_, newBalance, err := gs.repo.ExecutePlayTransaction(domain.PlayTransaction{
+	_, newBalance, err := gs.repo.ProcessPlay(domain.PlayTransaction{
 		Message:    msg,
 		DiceResult: diceResult,
 		Won:        haveWon,

@@ -8,7 +8,7 @@ type Repository interface {
 	GetBalance(playerID int) (float64, error)
 	GetActiveSession(playerID int) (*GameSession, error)
 	CloseCurrentGameSession(clientID int) error
-	ExecutePlayTransaction(t PlayTransaction) (GameSession, float64, error)
+	ProcessPlay(t PlayTransaction) (GameSession, float64, error)
 }
 
 type MessageType string
