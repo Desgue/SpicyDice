@@ -74,8 +74,6 @@ restart-v: down-v up
 .PHONY: clean
 clean: down
 	@echo "Cleaning up Docker images..."
-	docker rmi $(SERVER_IMAGE):latest || true
-	docker rmi $(DB_IMAGE):latest || true
 	docker-compose rm -f
 
 
