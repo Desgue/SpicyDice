@@ -28,12 +28,13 @@ func NewGameService(repo repository.Repository) *GameService {
 	}
 }
 
-func (gs *GameService) GetBalance(userID int) (domain.WalletResponse, error) {
-	balance, err := gs.repo.GetBalance(userID)
+func (gs *GameService) GetBalance(playerID int) (domain.WalletResponse, error) {
+	log.Printf("\nGetting balance for client id -> %d", playerID)
+	balance, err := gs.repo.GetBalance(playerID)
 	if err != nil {
 		return domain.WalletResponse{}, appErrors.NewInternalError(err.Error())
 	}
-	return domain.WalletResponse{ClientID: userID, Balance: balance}, nil
+	return domain.WalletResponse{ClientID: playerID, Balance: balance}, nil
 }
 
 func (gs *GameService) ProcessPlay(msg domain.PlayRequest, dice DiceRoller) (domain.PlayResponse, error) {
