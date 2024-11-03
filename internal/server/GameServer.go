@@ -62,7 +62,7 @@ func (s *WebSocketServer) Serve(w http.ResponseWriter, r *http.Request) {
 	conn := connection{
 		service:      s.service,
 		ws:           ws,
-		messagesChan: make(chan WsMessage),
+		messagesChan: make(chan WsMessage, 100),
 		doneChan:     make(chan struct{}),
 	}
 
