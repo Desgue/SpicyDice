@@ -43,7 +43,9 @@ func (gr *GameRepository) GetActiveSession(playerID int) (*domain.GameSession, e
 	if err != nil {
 		return nil, err
 	}
-
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("error commiting get session transaction: %w", err)
+	}
 	return session, nil
 }
 func (gr *GameRepository) getActiveSession(tx *sql.Tx, playerID int) (*domain.GameSession, error) {
