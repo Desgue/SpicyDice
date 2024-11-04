@@ -2,6 +2,7 @@ package appErrors
 
 import "fmt"
 
+// Error codes for game-related operations
 const (
 	InternalErrorCode = iota + 1000
 	InvalidInputErrorCode
@@ -12,16 +13,19 @@ const (
 	DiceRollErrorCode
 )
 
+// GameError provides structured error information for client feedback
 type GameError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Details string `json:"details,omitempty"`
 }
 
+// Error satisfies the error interface and formats the error message
 func (e *GameError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Message, e.Details)
 }
 
+// NewInternalError creates errors for unexpected system failures
 func NewInternalError(details string) *GameError {
 	return &GameError{
 		Code:    InternalErrorCode,
@@ -29,6 +33,8 @@ func NewInternalError(details string) *GameError {
 		Details: details,
 	}
 }
+
+// NewInvalidInputError creates errors for malformed request data
 func NewInvalidInputError(details string) *GameError {
 	return &GameError{
 		Code:    InvalidBetAmountErrorCode,
@@ -37,6 +43,7 @@ func NewInvalidInputError(details string) *GameError {
 	}
 }
 
+// NewInsufficientFundsError creates errors when bet exceeds player balance
 func NewInsufficientFundsError(details string) *GameError {
 	return &GameError{
 		Code:    InsufficientFundsErrorCode,
@@ -45,6 +52,7 @@ func NewInsufficientFundsError(details string) *GameError {
 	}
 }
 
+// NewInvalidBetAmountError creates errors when bet doesn't meet game rules
 func NewInvalidBetAmountError(details string) *GameError {
 	return &GameError{
 		Code:    InvalidBetAmountErrorCode,
@@ -53,6 +61,7 @@ func NewInvalidBetAmountError(details string) *GameError {
 	}
 }
 
+// NewUserNotFoundError creates errors for non-existent player lookups
 func NewUserNotFoundError(details string) *GameError {
 	return &GameError{
 		Code:    UserNotFoundErrorCode,
@@ -61,6 +70,7 @@ func NewUserNotFoundError(details string) *GameError {
 	}
 }
 
+// NewActiveSessionError creates errors for concurrent session conflicts
 func NewActiveSessionError(details string) *GameError {
 	return &GameError{
 		Code:    ActiveSessionErrorCode,
@@ -69,6 +79,7 @@ func NewActiveSessionError(details string) *GameError {
 	}
 }
 
+// NewDiceRollError creates errors for randomization failures
 func NewDiceRollError(details string) *GameError {
 	return &GameError{
 		Code:    DiceRollErrorCode,
