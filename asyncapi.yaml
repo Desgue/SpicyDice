@@ -1,0 +1,195 @@
+asyncapi: 3.0.0
+info:
+  title: Spicy Dice - Casino Game WebSocket API
+  version: 1.0.0
+  description: >-
+    This is a WebSocket-based API for Spicy Dice, a proof-of-concept gambling
+    game where players bet on dice rolls. This API allows interaction with
+    various game functionalities, including wallet balance checks, starting a
+    game round, and ending a play session.
+  license:
+    name: MIT License
+  externalDocs:
+    description: Source Code Repository
+    url: https://github.com/Desgue/SpicyDice
+servers:
+  public:
+    host: localhost:8080
+    protocol: ws
+operations:
+  send:
+    action: send
+    channel:
+      $ref: '#/channels/ws'
+    summary: Send messages to the websockets server
+  receive:
+    action: receive
+    channel:
+      $ref: '#/channels/ws'
+    summary: Receives messages to the websockets server
+channels:
+  ws:
+    address: ws://localhost:8080/ws/spicy-dice
+    description: WebSocket channel for Spicy Dice interactions.
+    messages:
+      walletRequest:
+        $ref: '#/components/messages/walletRequest'
+      playRequest:
+        $ref: '#/components/messages/playRequest'
+      endPlayRequest:
+        $ref: '#/components/messages/endPlayRequest'
+    bindings:
+      ws:
+        bindingVersion: 0.1.0
+components:
+  messages:
+    walletRequest:
+      summary: Request to check the current wallet balance.
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - wallet
+            description: Type of the message, indicating a wallet request.
+          payload:
+            $ref: '#/components/schemas/WalletRequest'
+      examples:
+        - name: WalletRequestExample
+          payload:
+            type: wallet
+            payload:
+              client_id: 123
+    playRequest:
+      summary: Request to start a new game round.
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - play
+            description: Type of the message, indicating a play request.
+          payload:
+            $ref: '#/components/schemas/PlayRequest'
+      examples:
+        - name: PlayRequestExample
+          payload:
+            type: play
+            payload:
+              client_id: 123
+              bet_amount: 50
+              bet_type: even
+    endPlayRequest:
+      summary: Request to end the current play session.
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - endplay
+            description: Type of the message, indicating an end play request.
+          payload:
+            $ref: '#/components/schemas/EndPlayRequest'
+      examples:
+        - name: EndPlayRequestExample
+          payload:
+            type: endplay
+            payload:
+              client_id: 123
+  schemas:
+    WalletRequest:
+      type: object
+      required:
+        - client_id
+      properties:
+        client_id:
+          type: integer
+          description: The ID of the client requesting the wallet balance.
+    WalletResponse:
+      type: object
+      required:
+        - client_id
+        - balance
+      properties:
+        client_id:
+          type: integer
+          description: The ID of the client.
+        balance:
+          type: number
+          format: float
+          description: The current balance of the client's wallet.
+    PlayRequest:
+      type: object
+      required:
+        - client_id
+        - bet_amount
+        - bet_type
+      properties:
+        client_id:
+          type: integer
+          description: The ID of the client initiating the game round.
+        bet_amount:
+          type: number
+          format: float
+          description: The amount the client is betting.
+        bet_type:
+          type: string
+          enum:
+            - even
+            - odd
+          description: The type of bet, either 'even' or 'odd'.
+    PlayResponse:
+      type: object
+      required:
+        - dice_result
+        - won
+        - balance
+        - bet_amount
+      properties:
+        dice_result:
+          type: integer
+          description: The result of the dice roll.
+        won:
+          type: boolean
+          description: Indicates if the client won the bet.
+        balance:
+          type: number
+          format: float
+          description: The updated balance after the game round.
+        bet_amount:
+          type: number
+          format: float
+          description: The amount the client bet.
+    EndPlayRequest:
+      type: object
+      required:
+        - client_id
+      properties:
+        client_id:
+          type: integer
+          description: The ID of the client requesting to end the game session.
+    EndPlayResponse:
+      type: object
+      required:
+        - client_id
+      properties:
+        client_id:
+          type: integer
+          description: The ID of the client confirming the end of the session.
+    ErrorMessage:
+      type: object
+      required:
+        - type
+        - message
+      properties:
+        type:
+          type: string
+          enum:
+            - error
+          description: Indicates an error message.
+        message:
+          type: string
+          description: Details of the error encountered.
