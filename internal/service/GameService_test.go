@@ -60,7 +60,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 			},
 			setupMock: func(mockRepo *repository.MockRepository) {
 				mockRepo.On("GetBalance", 1).Return(TestBalance, nil)
-				mockRepo.On("ExecutePlayTransaction", domain.PlayTransaction{
+				mockRepo.On("ProcessPlay", domain.PlayTransaction{
 					Message: domain.PlayRequest{
 						ClientID:  1,
 						BetAmount: 100,
@@ -83,7 +83,7 @@ func TestProcessPlay_BusinessLogic(t *testing.T) {
 			},
 			setupMock: func(mockRepo *repository.MockRepository) {
 				mockRepo.On("GetBalance", 1).Return(TestBalance, nil)
-				mockRepo.On("ExecutePlayTransaction", domain.PlayTransaction{
+				mockRepo.On("ProcessPlay", domain.PlayTransaction{
 					Message: domain.PlayRequest{
 						ClientID:  1,
 						BetAmount: TestValidBet,
