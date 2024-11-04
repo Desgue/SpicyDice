@@ -1,8 +1,6 @@
-# SpicyDice Documentation Index
-
+# SpicyDice Documentation
 ## 📖 Overview
 SpicyDice is a high-performance betting game server that enables real-time dice gambling through WebSocket connections. Built with Go, it features:
-
 - Real-time Gameplay: Instant bet placement and results via WebSocket
 - Session Management: Secure single-session system per player
 - Persistent Storage: PostgreSQL-backed transaction history
@@ -14,7 +12,6 @@ SpicyDice is a high-performance betting game server that enables real-time dice 
 - Make (optional)
 
 ## Quick Start with Make
-
 ### Full Application Deployment
 ```bash
 # Build and start entire application
@@ -25,41 +22,32 @@ make up
 ```bash
 # Start in background (detached mode)
 make up-d
-
 # Stop application
 make down
-
 # Restart application
 make restart
-
 # Restart application cleaning the volume
 make restart-v
 ```
 
 ## Manual Docker Compose Deployment
-
 ### Standard Deployment
 ```bash
 # Build and start services
 docker-compose up --build
-
 # Start in background
 docker-compose up --build -d
 ```
 
 ## Service Management Commands
-
 ### With Make
 ```bash
 # View running containers
 make ps
-
 # View all logs
 make logs
-
 # View server logs
 make logs-server
-
 # View database logs
 make logs-db
 ```
@@ -68,10 +56,8 @@ make logs-db
 ```bash
 # View running containers
 docker-compose ps
-
 # View logs
 docker-compose logs
-
 # Stop and remove all services
 docker-compose down
 ```
@@ -88,10 +74,10 @@ docker-compose down
 make clean
 ```
 
+
 **Note**: Credentials are for development. Modify for production use.
 
 ## WebSocket API
-
 ### Connection
 ```
 ws://localhost:8080/ws
@@ -106,7 +92,6 @@ ws://localhost:8080/ws
 ```
 
 ### Endpoints
-
 #### 1. Get Wallet Balance
 ```json
 {
@@ -175,7 +160,66 @@ Response:
 - Invalid message types
 
 ## Architecture
+### Core Components
 - Clean Architecture pattern
 - Services layer for game logic
 - Repository layer for data persistence
 - PostgreSQL for data storage
+
+## Testing
+The project includes basic test coverage as a proof of concept, demonstrating:
+- Unit testing methodologies
+- Integration testing patterns
+- Golang table driven testing practices
+
+For production deployment, additional testing would be required:
+- Comprehensive business rule validation
+- Network security testing
+- Compliance and regulation testing
+- Gaming fairness certification
+- Load and stress testing using K6 or similar tools
+
+## Security Considerations
+### Client Identification
+- Current implementation uses integer Client IDs
+- Production should implement UUIDs to prevent ID spoofing
+- Session management should be enhanced with proper authentication
+
+### Data Management
+- Production environment should separate game_session table into:
+  - game_play: Individual play records
+  - game_session: Session management
+- Implement comprehensive transaction logging
+- Double-entry bookkeeping for financial transactions
+- Audit trail for all gaming activities
+
+## Concurrency and Performance
+The current implementation provides:
+- Basic WebSocket server with concurrent connections
+- Session management for multiple users
+
+Production enhancements should include:
+- Enhanced state management in WebSocket messages
+- Robust connection handling
+- Rate limiting
+- Advanced error recovery
+- Comprehensive load testing
+
+## CI/CD
+Basic CI/CD pipeline is implemented using GitHub Actions to demonstrate:
+- Automated testing
+- Build processes
+- Deployment workflows
+
+## Production Considerations
+While this implementation serves as a technical demonstration, a production environment would require:
+1. Enhanced security measures
+2. Regulatory compliance
+3. Advanced monitoring and logging
+4. Scalability improvements
+5. Comprehensive documentation
+6. Disaster recovery planning
+7. Regular security audits
+8. Performance optimization
+
+
