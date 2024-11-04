@@ -13,6 +13,7 @@ import (
 	"github.com/Desgue/SpicyDice/internal/repository"
 )
 
+// GameService orchestrates game logic and wallet operations while maintaining transactional integrity
 type GameService struct {
 	repo repository.Repository
 }
@@ -22,12 +23,14 @@ var (
 	MaxBetAmount = config.New().Game.MaxBetAmount
 )
 
+// NewGameService follows the repository pattern for data persistence operations
 func NewGameService(repo repository.Repository) *GameService {
 	return &GameService{
 		repo: repo,
 	}
 }
 
+// GetBalance retrieves current balance ensuring player exists in the system
 func (gs *GameService) GetBalance(playerID int) (domain.WalletResponse, error) {
 	log.Printf("\nGetting balance for client id -> %d", playerID)
 	balance, err := gs.repo.GetBalance(playerID)
@@ -37,6 +40,8 @@ func (gs *GameService) GetBalance(playerID int) (domain.WalletResponse, error) {
 	return domain.WalletResponse{ClientID: playerID, Balance: balance}, nil
 }
 
+// ProcessPlay handles the complete game cycle: validation, dice roll, outcome calculation and balance update
+// Returns error if any game rules are violated or system errors occur
 func (gs *GameService) ProcessPlay(msg domain.PlayRequest, dice DiceRoller) (domain.PlayResponse, error) {
 	log.Printf("\nProcessing play for user id -> %d\nBet Amount -> %g\nBet Type -> %s", msg.ClientID, msg.BetAmount, msg.BetType)
 
@@ -70,10 +75,10 @@ func (gs *GameService) ProcessPlay(msg domain.PlayRequest, dice DiceRoller) (dom
 	return domain.PlayResponse{DiceResult: diceResult, Won: haveWon, Balance: newBalance, BetAmount: msg.BetAmount}, nil
 }
 
+// EndPlay enforces game session closure rules and maintains data consistency
 func (gs *GameService) EndPlay(clientID int) (domain.EndPlayResponse, error) {
 	log.Printf("\nFinishing play session for client id -> %d", clientID)
 
-	// VALIDATE USER HAS AN ACTIVE SESSION BEFORE ENDING THE PLAY SESSION
 	activeSession, err := gs.repo.GetActiveSession(clientID)
 	if err != nil {
 		return domain.EndPlayResponse{}, appErrors.NewInternalError(err.Error())
@@ -89,8 +94,7 @@ func (gs *GameService) EndPlay(clientID int) (domain.EndPlayResponse, error) {
 	return domain.EndPlayResponse{ClientID: clientID}, nil
 }
 
-// PRIVATE METHODS
-
+// validateBetAmount enforces betting rules including minimum/maximum limits and available balance
 func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	var details string
 
@@ -121,13 +125,17 @@ func (gs *GameService) validateBetAmount(betAmount, balance float64) error {
 	return nil
 }
 
+// DiceRoller defines the contract for dice rolling implementations
 type DiceRoller interface {
 	Roll() (int, error)
 }
+
+// Dice implements secure random number generation for fair game outcomes
 type Dice struct {
 	Sides int
 }
 
+// Roll uses crypto/rand for cryptographically secure random number generation
 func (d Dice) Roll() (int, error) {
 	bigI, err := rand.Int(rand.Reader, big.NewInt(int64(d.Sides)))
 	if err != nil {

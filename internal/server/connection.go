@@ -13,6 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// connection implements concurrent safe bidirectional communication
+// using separate read/write goroutines with proper cleanup mechanisms
 type connection struct {
 	service      *service.GameService
 	ws           *websocket.Conn
@@ -22,6 +24,8 @@ type connection struct {
 	closeOnce    sync.Once
 }
 
+// readPump maintains the read side of the websocket, implementing ping/pong heartbeat
+// and message routing. Exits on any error, triggering connection cleanup
 func (c *connection) readPump() {
 	defer func() {
 		log.Println("Closing connection from readPump routine...")
@@ -48,6 +52,8 @@ func (c *connection) readPump() {
 	}
 }
 
+// writePump handles the write side of the websocket with periodic ping messages
+// Uses mutex for concurrent write safety and implements graceful shutdown
 func (c *connection) writePump() {
 	ticker := time.NewTicker(tickDuration)
 
@@ -92,6 +98,8 @@ func (c *connection) writePump() {
 
 }
 
+// handleMessage routes incoming messages to their appropriate handlers based on message type
+// Returns domain specific errors for invalid messages or processing failures
 func (c *connection) handleMessage(msg WsMessage) error {
 	switch msg.Type {
 	case domain.MessageTypeWallet:
@@ -105,7 +113,7 @@ func (c *connection) handleMessage(msg WsMessage) error {
 	}
 }
 
-// handleWalletMessage processes wallet-related messages
+// handleWalletMessage processes wallet related requests ensuring payload validity
 func (c *connection) handleWalletMessage(msg WsMessage) error {
 	var payload domain.WalletRequest
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
@@ -121,7 +129,7 @@ func (c *connection) handleWalletMessage(msg WsMessage) error {
 	return c.writeToChan(domain.MessageTypeWallet, balance)
 }
 
-// handlePlayMessage processes play-related messages
+// handlePlayMessage processes game play requests ensuring payload validity
 func (c *connection) handlePlayMessage(msg WsMessage) error {
 	var payload domain.PlayRequest
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
@@ -138,7 +146,7 @@ func (c *connection) handlePlayMessage(msg WsMessage) error {
 	return c.writeToChan(domain.MessageTypePlay, result)
 }
 
-// handleEndPlayMessage processes end-play messages
+// handleEndPlayMessage processes session end requests ensuring payload validity
 func (c *connection) handleEndPlayMessage(msg WsMessage) error {
 	var payload domain.EndPlayRequest
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
@@ -155,12 +163,12 @@ func (c *connection) handleEndPlayMessage(msg WsMessage) error {
 	return c.writeToChan(domain.MessageTypeEndPlay, endPlayResponse)
 }
 
+// Returns error if connection is closed or message buffer is full
 func (c *connection) writeToChan(msgType domain.MessageType, data interface{}) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("error marshaling incomming message: %w", err)
 	}
-	// The select handles the case where the messageChan is full and prevents indefinitely block
 	select {
 	case c.messagesChan <- WsMessage{Type: msgType, Payload: payload}:
 		return nil
@@ -171,7 +179,8 @@ func (c *connection) writeToChan(msgType domain.MessageType, data interface{}) e
 	}
 }
 
-// Makes sure all close operations happens only one time to avoid race conditions
+// cleanUpOnce ensures connection cleanup happens only once
+// Uses sync.Once to prevent duplicate cleanup operations
 func (c *connection) cleanUpOnce() {
 	c.closeOnce.Do(func() {
 		log.Println("Closing connection...")

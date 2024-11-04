@@ -16,6 +16,8 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+// testDBConfig helps us to setup test scenarios with a nice chain of functions
+// Useful to prepare the database before each test in a clean way
 type testDBConfig struct {
 	ctx        context.Context
 	t          *testing.T
@@ -23,6 +25,8 @@ type testDBConfig struct {
 	operations []func(*sql.Tx) error
 }
 
+// NewTestConfig creates the DB Config
+// It already includes the table creation in the operations list
 func NewTestConfig(ctx context.Context, t *testing.T, db *sql.DB) *testDBConfig {
 	cfg := &testDBConfig{
 		ctx: ctx,
@@ -32,6 +36,9 @@ func NewTestConfig(ctx context.Context, t *testing.T, db *sql.DB) *testDBConfig 
 	cfg.operations = append(cfg.operations, cfg.createTables)
 	return cfg
 }
+
+// createTables makes our test database schema with indexes
+// We need this to guarantee db consistency during the tests
 func (cfg *testDBConfig) createTables(tx *sql.Tx) error {
 	playerTable := `
 	CREATE TABLE IF NOT EXISTS player (
@@ -66,11 +73,11 @@ func (cfg *testDBConfig) createTables(tx *sql.Tx) error {
 		return err
 	}
 	return nil
-
 }
 
+// WithPlayer adds a new player to the operations queue
+// Good to test different player scenarios with clean setup
 func (cfg *testDBConfig) WithPlayer(id int, balance float64) *testDBConfig {
-
 	insertPlayer := func(tx *sql.Tx) error {
 		query := `
 		INSERT INTO player (id, balance)
@@ -82,10 +89,11 @@ func (cfg *testDBConfig) WithPlayer(id int, balance float64) *testDBConfig {
 	}
 	cfg.operations = append(cfg.operations, insertPlayer)
 	return cfg
-
 }
-func (cfg *testDBConfig) WithActiveSession(session domain.GameSession) *testDBConfig {
 
+// WithActiveSession adds a game session to the operations queue
+// Good to test cases where player already has active session
+func (cfg *testDBConfig) WithActiveSession(session domain.GameSession) *testDBConfig {
 	insertSession := func(tx *sql.Tx) error {
 		query := `
 		INSERT INTO game_session (session_id, player_id, bet_amount, dice_result, won, active, session_start)
@@ -108,9 +116,9 @@ func (cfg *testDBConfig) WithActiveSession(session domain.GameSession) *testDBCo
 	}
 	cfg.operations = append(cfg.operations, insertSession)
 	return cfg
-
 }
 
+// Setup runs all operations in sequence inside a transaction
 func (cfg *testDBConfig) Setup() error {
 	tx, err := cfg.db.Begin()
 	if err != nil {
@@ -129,8 +137,10 @@ func (cfg *testDBConfig) Setup() error {
 	}
 	return nil
 }
-func (cfg *testDBConfig) Cleanup() error {
 
+// Cleanup removes all test data and resets operations list
+// Important to mantain a clean state after every test
+func (cfg *testDBConfig) Cleanup() error {
 	tx, err := cfg.db.Begin()
 	if err != nil {
 		return fmt.Errorf("Cleanup: error starting transaction: %w", err)
@@ -156,9 +166,9 @@ func (cfg *testDBConfig) Cleanup() error {
 	return nil
 }
 
+// TestProcessPlay checks if game rules are working right in database
+// Here we use docker to create a postgres container to ensure a clean state every test
 func TestProcessPlay(t *testing.T) {
-
-	// CONFIGURE TESTCONTAINERS TO USE POSTGRES IMAGE
 	ctx := context.Background()
 	dbName := "postgres"
 	dbUser := "postgres"
@@ -196,8 +206,7 @@ func TestProcessPlay(t *testing.T) {
 	testDB := NewTestConfig(ctx, t, db)
 	repo := NewGameRepository(db)
 
-	//DEFINE TESTCASES IN A TABLE DRIVEN APPROACH
-	tesCases := []struct {
+	testCases := []struct {
 		name                    string
 		expectError             bool
 		expectedErrorCode       int
@@ -206,7 +215,7 @@ func TestProcessPlay(t *testing.T) {
 		setupFunc               func(cfg *testDBConfig) *testDBConfig
 		transaction             domain.PlayTransaction
 	}{
-		// TODO REFACTOR TO REMOVE HARDCODED VALUES
+		// Validates that a player cannot start a new game session while having an active one
 		{
 			name:                    "active_session_exists",
 			expectError:             true,
@@ -214,7 +223,7 @@ func TestProcessPlay(t *testing.T) {
 			expectedBalance:         0.0,
 			expectedSessionResponse: true,
 			setupFunc: func(cfg *testDBConfig) *testDBConfig {
-				// CONFIGURE DATABASE, CREATE TABLES AND INSERT DATA FOR THE TEST
+				// Simulates an existing active session for the player
 				playerId, sessionId := 1, 1
 				config := cfg.WithPlayer(playerId, 1000).WithActiveSession(domain.GameSession{
 					SessionID:    sessionId,
@@ -240,13 +249,13 @@ func TestProcessPlay(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tesCases {
+	for _, tc := range testCases {
+		// Simulates an existing active session for the player
 		cfg := tc.setupFunc(testDB)
 		if err := cfg.Setup(); err != nil {
 			t.Fatalf("error configuring test database: %s", err)
 		}
 
-		// ASSERT TEST CASES
 		session, balance, err := repo.ProcessPlay(tc.transaction)
 
 		assert.Equal(t, tc.expectedBalance, balance)
@@ -264,10 +273,8 @@ func TestProcessPlay(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		// CLEANUP ALL DATA FROM THE DATABASE TO PREPARE FOR THE NEXT TEST
 		if err := cfg.Cleanup(); err != nil {
 			t.Fatal(err)
 		}
 	}
-
 }

@@ -58,7 +58,6 @@ type EndPlayResponse struct {
 	ClientID int `json:"client_id"`
 }
 
-// The payload from the frontend
 type EndPlayRequest struct {
 	ClientID int `json:"client_id"`
 }
